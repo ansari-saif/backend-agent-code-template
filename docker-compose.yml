@@ -1,9 +1,0 @@
-version: "3.9"
-
-services:
-  backend-template:
-    build: .
-    container_name: backend-template
-    ports:
-      - "8000:8000"
-    restart: always
