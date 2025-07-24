@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi import APIRouter
 from app.api.v1.routes.todo import router as todo_router
-from app.core.database import engine
-from app.models.todo import SQLModel
+from app.core.database import create_db_and_tables
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -24,7 +23,7 @@ app.add_middleware(
 # Create the database tables
 @app.on_event("startup")
 def on_startup():
-    SQLModel.metadata.create_all(engine)
+    create_db_and_tables()
 
 # Include routes
 app.include_router(todo_router, prefix="/api/v1/todo")
