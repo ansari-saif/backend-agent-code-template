@@ -1,35 +1,67 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session, select
-from app.models.todo import Todo, TodoCreate
-from app.schemas.todo import TodoRead, TodoUpdateSchema
+from typing import List
 from app.core.database import get_session
-from app.services.todo_service import (
-    create_todo_service, delete_todo_service, get_todo_service, list_all_todo_service, update_todo_service
-)
+from app.models.todo import Todo, TodoCreate, TodoUpdate
 
 router = APIRouter()
 
-@router.post("/", response_model=TodoRead, tags=["todo"])
+@router.post("/", response_model=Todo, status_code=status.HTTP_201_CREATED)
 def create_todo(todo: TodoCreate, session: Session = Depends(get_session)):
-    new_todo = create_todo_service(todo, session)
-    return new_todo
+    """Create a new todo."""
+    db_todo = Todo.model_validate(todo)
+    session.add(db_todo)
+    session.commit()
+    session.refresh(db_todo)
+    return db_todo
 
-@router.get("/{todo_id}", response_model=TodoRead, tags=["todo"])
-def get_todo(todo_id: int, session: Session = Depends(get_session)):
-    todo = get_todo_service(todo_id, session)
+@router.get("/", response_model=List[Todo])
+def read_todos(skip: int = 0, limit: int = 100, session: Session = Depends(get_session)):
+    """Get all todos with pagination."""
+    statement = select(Todo).offset(skip).limit(limit)
+    todos = session.exec(statement).all()
+    return todos
+
+@router.get("/{todo_id}", response_model=Todo)
+def read_todo(todo_id: int, session: Session = Depends(get_session)):
+    """Get a specific todo by ID."""
+    todo = session.get(Todo, todo_id)
+    if not todo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Todo not found"
+        )
     return todo
 
-@router.put("/{todo_id}", response_model=TodoRead, tags=["todo"])
-def update_todo(todo_id: int, todo_data: TodoUpdateSchema, session: Session = Depends(get_session)):
-    updated_todo = update_todo_service(todo_id, todo_data, session)
-    return updated_todo
+@router.put("/{todo_id}", response_model=Todo)
+def update_todo(todo_id: int, todo_update: TodoUpdate, session: Session = Depends(get_session)):
+    """Update a todo."""
+    todo = session.get(Todo, todo_id)
+    if not todo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Todo not found"
+        )
+    
+    todo_data = todo_update.model_dump(exclude_unset=True)
+    for field, value in todo_data.items():
+        setattr(todo, field, value)
+    
+    session.add(todo)
+    session.commit()
+    session.refresh(todo)
+    return todo
 
-@router.delete("/{todo_id}", response_model=dict, tags=["todo"])
+@router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_todo(todo_id: int, session: Session = Depends(get_session)):
-    delete_todo_service(todo_id, session)
-    return {"message": "Todo deleted successfully"}
-
-@router.get("/", response_model=list[TodoRead], tags=["todo"])
-def list_all_todo(session: Session = Depends(get_session)):
-    todo = list_all_todo_service(session)
-    return todo
+    """Delete a todo."""
+    todo = session.get(Todo, todo_id)
+    if not todo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Todo not found"
+        )
+    
+    session.delete(todo)
+    session.commit()
+    return None

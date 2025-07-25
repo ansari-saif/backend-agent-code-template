@@ -1,29 +1,52 @@
 from fastapi import FastAPI
-from fastapi import APIRouter
-from app.api.v1.routes.todo import router as todo_router
+from app.api.v1.routes import todo
+from app.api.v1.routes import user
+from app.api.v1.routes import goal
+from app.api.v1.routes import task
+from app.api.v1.routes import progress_log
+from app.api.v1.routes import ai_context
+from app.api.v1.routes import job_metrics
+from app.api.v1.routes import ai_service
 from app.core.database import create_db_and_tables
-from fastapi.middleware.cors import CORSMiddleware
-
 
 app = FastAPI(
-    servers=[
-        {"url": "http://localhost:8000", "description": "Local development server"},
-    ]
-)
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,  # List of allowed origins
-    allow_credentials=True,  # Allow cookies and credentials
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    title="AI-Powered Productivity System",
+    description="A comprehensive productivity system with AI agents for entrepreneurs",
+    version="1.0.0"
 )
 
-# Create the database tables
+# Create database tables on startup
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
 
-# Include routes
-app.include_router(todo_router, prefix="/api/v1/todo")
+# Include all API routes
+app.include_router(todo.router, prefix="/todos", tags=["todos"])
+app.include_router(user.router, prefix="/users", tags=["users"])
+app.include_router(goal.router, prefix="/goals", tags=["goals"])
+app.include_router(task.router, prefix="/tasks", tags=["tasks"])
+app.include_router(progress_log.router, prefix="/progress-logs", tags=["progress-logs"])
+app.include_router(ai_context.router, prefix="/ai-context", tags=["ai-context"])
+app.include_router(job_metrics.router, prefix="/job-metrics", tags=["job-metrics"])
+app.include_router(ai_service.router, prefix="/ai", tags=["ai-service"])
+
+@app.get("/")
+def read_root():
+    return {
+        "message": "Welcome to the AI-Powered Productivity System",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "features": [
+            "User management",
+            "Goal tracking",
+            "Task management",
+            "Progress logging",
+            "AI context learning",
+            "Job metrics tracking",
+            "6 AI agents for productivity optimization"
+        ]
+    }
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "AI Productivity System"}
