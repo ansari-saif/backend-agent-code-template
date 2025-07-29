@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List
 from datetime import date, time
 from enum import Enum
+from sqlalchemy import Column, String
 
 
 class TimezoneEnum(str, Enum):
@@ -10,6 +11,7 @@ class TimezoneEnum(str, Enum):
     PST = "PST"
     CST = "CST"
     MST = "MST"
+    IST = "IST"
 
 
 class PhaseEnum(str, Enum):
@@ -30,7 +32,10 @@ class UserBase(SQLModel):
     telegram_id: str = Field(primary_key=True)
     name: str
     birthday: Optional[date] = None
-    timezone: TimezoneEnum = TimezoneEnum.UTC
+    timezone: TimezoneEnum = Field(
+        default=TimezoneEnum.UTC,
+        sa_column=Column(String, nullable=False)
+    )
     current_phase: PhaseEnum = PhaseEnum.RESEARCH
     quit_job_target: Optional[date] = None
     onboarding_complete: bool = False

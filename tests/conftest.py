@@ -65,7 +65,7 @@ def sample_user_data():
         "telegram_id": "123456789",
         "name": "John Entrepreneur",
         "birthday": date(1990, 5, 15),
-        "timezone": TimezoneEnum.EST,
+        "timezone": TimezoneEnum.IST,
         "current_phase": PhaseEnum.MVP,
         "quit_job_target": date(2024, 12, 31),
         "onboarding_complete": True,
