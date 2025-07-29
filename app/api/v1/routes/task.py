@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime, date
 from app.core.database import get_session
-from app.models.task import Task, TaskCreate, TaskUpdate
+from app.models.task import Task, TaskCreate, TaskUpdate, CompletionStatusEnum
 from app.models.user import User
 from app.models.goal import Goal
 
@@ -47,7 +47,7 @@ def read_tasks(
     limit: int = 100, 
     user_id: Optional[str] = None,
     goal_id: Optional[int] = None,
-    completion_status: Optional[str] = None,
+    completion_status: Optional[CompletionStatusEnum] = None,
     session: Session = Depends(get_session)
 ):
     """Get all tasks with optional filtering."""
@@ -86,6 +86,34 @@ def update_task(task_id: int, task_update: TaskUpdate, session: Session = Depend
         )
     
     task_data = task_update.model_dump(exclude_unset=True)
+    
+    # Validate duration fields
+    if task_data.get("estimated_duration") is not None and task_data["estimated_duration"] < 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Estimated duration cannot be negative"
+        )
+    if task_data.get("actual_duration") is not None and task_data["actual_duration"] < 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Actual duration cannot be negative"
+        )
+    
+    # Validate goal existence if goal_id is provided
+    if task_data.get("goal_id") is not None:
+        goal = session.get(Goal, task_data["goal_id"])
+        if not goal:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Goal not found"
+            )
+        # Verify goal belongs to the task's user
+        if goal.user_id != task.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Goal does not belong to the task's user"
+            )
+    
     for field, value in task_data.items():
         setattr(task, field, value)
     
@@ -136,7 +164,7 @@ def get_user_pending_tasks(user_id: str, session: Session = Depends(get_session)
     
     statement = select(Task).where(
         Task.user_id == user_id,
-        Task.completion_status.in_(["Not Started", "In Progress"])
+        Task.completion_status.in_([CompletionStatusEnum.PENDING, CompletionStatusEnum.IN_PROGRESS])
     )
     tasks = session.exec(statement).all()
     return tasks
@@ -171,7 +199,7 @@ def complete_task(task_id: int, session: Session = Depends(get_session)):
             detail="Task not found"
         )
     
-    task.completion_status = "Completed"
+    task.completion_status = CompletionStatusEnum.COMPLETED
     session.add(task)
     session.commit()
     session.refresh(task)

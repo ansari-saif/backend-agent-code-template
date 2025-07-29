@@ -6,8 +6,12 @@ from datetime import datetime
 from app.core.database import get_session
 from app.models.ai_context import AIContext, AIContextCreate, AIContextUpdate
 from app.models.user import User
+from pydantic import BaseModel
 
 router = APIRouter()
+
+class InsightsUpdate(BaseModel):
+    insights: str
 
 @router.post("/", response_model=AIContext, status_code=status.HTTP_201_CREATED)
 def create_ai_context(ai_context: AIContextCreate, session: Session = Depends(get_session)):
@@ -174,7 +178,11 @@ def update_behavior_patterns(user_id: str, patterns: dict, session: Session = De
     return ai_context
 
 @router.patch("/user/{user_id}/insights", response_model=AIContext)
-def update_productivity_insights(user_id: str, insights: str, session: Session = Depends(get_session)):
+def update_productivity_insights(
+    user_id: str,
+    insights_update: InsightsUpdate,
+    session: Session = Depends(get_session)
+):
     """Update productivity insights for a user's AI context."""
     # Verify user exists
     user = session.get(User, user_id)
@@ -194,7 +202,7 @@ def update_productivity_insights(user_id: str, insights: str, session: Session =
             detail="AI context not found for this user"
         )
     
-    ai_context.productivity_insights = insights
+    ai_context.productivity_insights = insights_update.insights
     ai_context.last_updated = datetime.utcnow()
     session.add(ai_context)
     session.commit()

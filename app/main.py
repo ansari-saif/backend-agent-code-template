@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from app.api.v1.routes import todo
 from app.api.v1.routes import user
 from app.api.v1.routes import goal
 from app.api.v1.routes import task
@@ -21,7 +20,6 @@ def on_startup():
     create_db_and_tables()
 
 # Include all API routes
-app.include_router(todo.router, prefix="/todos", tags=["todos"])
 app.include_router(user.router, prefix="/users", tags=["users"])
 app.include_router(goal.router, prefix="/goals", tags=["goals"])
 app.include_router(task.router, prefix="/tasks", tags=["tasks"])

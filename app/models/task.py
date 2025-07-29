@@ -32,8 +32,8 @@ class TaskBase(SQLModel):
     priority: TaskPriorityEnum = TaskPriorityEnum.MEDIUM
     ai_generated: bool = False
     completion_status: CompletionStatusEnum = CompletionStatusEnum.PENDING
-    estimated_duration: Optional[int] = None  # minutes
-    actual_duration: Optional[int] = None     # minutes
+    estimated_duration: Optional[int] = Field(default=None, ge=0)  # minutes
+    actual_duration: Optional[int] = Field(default=None, ge=0)     # minutes
     energy_required: EnergyRequiredEnum = EnergyRequiredEnum.MEDIUM
 
 
@@ -58,6 +58,6 @@ class TaskUpdate(SQLModel):
     priority: Optional[TaskPriorityEnum] = None
     ai_generated: Optional[bool] = None
     completion_status: Optional[CompletionStatusEnum] = None
-    estimated_duration: Optional[int] = None
-    actual_duration: Optional[int] = None
+    estimated_duration: Optional[int] = Field(default=None, ge=0)
+    actual_duration: Optional[int] = Field(default=None, ge=0)
     energy_required: Optional[EnergyRequiredEnum] = None 

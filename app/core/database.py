@@ -5,7 +5,6 @@ import os
 from app.core.config import settings
 
 # Import all models to ensure they're registered
-from app.models.todo import Todo
 from app.models.user import User
 from app.models.goal import Goal
 from app.models.task import Task

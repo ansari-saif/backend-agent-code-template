@@ -1,4 +1,3 @@
-from .todo import Todo, TodoCreate, TodoUpdate, TodoBase
 from .user import User, UserCreate, UserUpdate, UserBase
 from .goal import Goal, GoalCreate, GoalUpdate, GoalBase
 from .task import Task, TaskCreate, TaskUpdate, TaskBase
