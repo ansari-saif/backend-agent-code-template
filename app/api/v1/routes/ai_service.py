@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session, select
 from typing import List, Dict, Any, Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from app.core.database import get_session
 from app.services.ai_service import AIService
 from app.models.user import User, PhaseEnum
 from app.models.goal import Goal, StatusEnum, GoalTypeEnum
-from app.models.task import Task, CompletionStatusEnum
+from app.models.task import Task, CompletionStatusEnum, TaskCreate, TaskPriorityEnum, EnergyRequiredEnum
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
@@ -15,6 +15,12 @@ from pydantic import BaseModel, Field
 router = APIRouter()
 
 # Request models
+class DailyTasks(BaseModel):
+    user_id: str
+    energy_level: int = Field(default=5, ge=1, le=10)
+    tasks: str
+    current_phase: Optional[PhaseEnum] = None
+    
 class DailyTasksRequest(BaseModel):
     user_id: str
     energy_level: int = Field(default=5, ge=1, le=10)
@@ -44,6 +50,77 @@ class CareerTransitionRequest(BaseModel):
 ai_service = AIService()
 
 @router.post("/daily-tasks", response_model=List[Dict[str, Any]])
+async def create_daily_tasks(request: DailyTasks, session: Session = Depends(get_session)):
+    """Generate AI-powered daily tasks for a user."""
+    # Verify user exists
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    try:
+        # Get recent progress logs (last 7 days)
+        start_date = date.today() - timedelta(days=7)
+        recent_progress = session.exec(
+            select(ProgressLog).where(
+                ProgressLog.user_id == request.user_id,
+                ProgressLog.date >= start_date
+            ).order_by(ProgressLog.date.desc())
+        ).all()
+        
+        # Get pending goals
+        pending_goals = session.exec(
+            select(Goal).where(
+                Goal.user_id == request.user_id,
+                Goal.status == StatusEnum.ACTIVE,
+                Goal.phase == (request.current_phase or user.current_phase)
+            )
+        ).all()
+        
+        # Generate daily tasks using AI
+        tasks = await ai_service.create_daily_tasks(
+            tasks=request.tasks,
+            user=user,
+            recent_progress=recent_progress,
+            pending_goals=pending_goals,
+            today_energy_level=request.energy_level
+        )
+        # Create tasks in the database
+        created_tasks = []
+        for task_data in tasks:
+            # Convert priority and energy_required to proper enums
+            task_create = TaskCreate(
+                user_id=user.telegram_id,
+                ai_generated=True,
+                description=task_data["description"],
+                priority=task_data["priority"],
+                completion_status=task_data["completion_status"],
+                actual_duration=task_data["actual_duration"],
+                goal_id=task_data["goal_id"],
+                deadline=task_data["deadline"],
+                estimated_duration=task_data["estimated_duration"],
+                energy_required=task_data["energy_required"],
+            )
+            
+            # Create task in database
+            db_task = Task.model_validate(task_create)
+            session.add(db_task)
+            created_tasks.append(db_task)
+        
+        # Commit all tasks at once
+        session.commit()
+        for task in created_tasks:
+            session.refresh(task)
+        return tasks
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate daily tasks: {str(e)}"
+        )
+@router.post("/generate-daily-tasks", response_model=List[Dict[str, Any]])
 async def generate_daily_tasks(request: DailyTasksRequest, session: Session = Depends(get_session)):
     """Generate AI-powered daily tasks for a user."""
     # Verify user exists
@@ -80,6 +157,8 @@ async def generate_daily_tasks(request: DailyTasksRequest, session: Session = De
             pending_goals=pending_goals,
             today_energy_level=request.energy_level
         )
+        
+        
         
         return tasks
         
