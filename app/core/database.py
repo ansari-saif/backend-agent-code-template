@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, create_engine, Session
 from typing import Annotated
 from fastapi import Depends
 import os
+from app.core.config import settings
 
 # Import all models to ensure they're registered
 from app.models.todo import Todo
@@ -13,7 +14,7 @@ from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
 
 # Use SQLite for development, PostgreSQL for production
-database_url = os.getenv("DATABASE_URL", "")
+database_url = settings.DATABASE_URL
 
 # Create engine
 connect_args = {}
