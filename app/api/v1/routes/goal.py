@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session, select
 from typing import List, Optional
 from app.core.database import get_session
-from app.models.goal import Goal, GoalCreate, GoalUpdate
+from app.models.goal import Goal, GoalCreate, GoalUpdate, StatusEnum
 from app.models.user import User
 
 router = APIRouter()
@@ -111,7 +111,7 @@ def get_user_pending_goals(user_id: str, session: Session = Depends(get_session)
     
     statement = select(Goal).where(
         Goal.user_id == user_id,
-        Goal.status.in_(["Not Started", "In Progress"])
+        Goal.status == StatusEnum.ACTIVE
     )
     goals = session.exec(statement).all()
     return goals 
