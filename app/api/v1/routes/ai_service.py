@@ -1,24 +1,24 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlmodel import Session, select
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import date, timedelta
 from app.core.database import get_session
 from app.services.ai_service import AIService
-from app.models.user import User
-from app.models.goal import Goal
-from app.models.task import Task
+from app.models.user import User, PhaseEnum
+from app.models.goal import Goal, StatusEnum, GoalTypeEnum
+from app.models.task import Task, CompletionStatusEnum
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
 # Request models
 class DailyTasksRequest(BaseModel):
     user_id: str
-    energy_level: int = 5
-    current_phase: str = None
+    energy_level: int = Field(default=5, ge=1, le=10)
+    current_phase: Optional[PhaseEnum] = None
 
 class MotivationRequest(BaseModel):
     user_id: str
@@ -68,7 +68,8 @@ async def generate_daily_tasks(request: DailyTasksRequest, session: Session = De
         pending_goals = session.exec(
             select(Goal).where(
                 Goal.user_id == request.user_id,
-                Goal.status.in_(["Not Started", "In Progress"])
+                Goal.status == StatusEnum.ACTIVE,
+                Goal.phase == (request.current_phase or user.current_phase)
             )
         ).all()
         
@@ -363,7 +364,7 @@ async def generate_complete_user_analysis(user_id: str, session: Session = Depen
             daily_tasks = await ai_service.generate_daily_tasks(
                 user=user,
                 recent_progress=recent_progress,
-                pending_goals=[g for g in goals if g.status in ["Not Started", "In Progress"]],
+                pending_goals=[g for g in goals if g.status == StatusEnum.ACTIVE],
                 today_energy_level=7
             )
             analysis["recommended_daily_tasks"] = daily_tasks
@@ -374,7 +375,7 @@ async def generate_complete_user_analysis(user_id: str, session: Session = Depen
                 ai_context=ai_context,
                 current_challenge="Daily productivity optimization",
                 stress_level=5,
-                recent_completions=[t for t in tasks if t.completion_status == "Completed"]
+                recent_completions=[t for t in tasks if t.completion_status == CompletionStatusEnum.COMPLETED]
             )
             analysis["motivation_message"] = motivation
         

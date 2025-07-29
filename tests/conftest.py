@@ -147,7 +147,7 @@ def sample_task_create_data():
         "deadline": "2024-03-15T17:00:00",
         "priority": "High",
         "ai_generated": True,
-        "completion_status": "In Progress",
+        "completion_status": CompletionStatusEnum.IN_PROGRESS.value,
         "estimated_duration": 120,
         "energy_required": "High"
     }

@@ -4,8 +4,8 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime, date, timedelta
 from app.models.user import User
-from app.models.goal import Goal
-from app.models.task import Task
+from app.models.goal import Goal, StatusEnum
+from app.models.task import Task, CompletionStatusEnum
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
@@ -183,7 +183,7 @@ class AIService:
             else:
                 avg_completion = avg_mood = avg_energy = avg_focus = completion_rate = 0
             
-            goal_progress = len([g for g in goals if g.status == "Completed"]) / max(len(goals), 1) * 100 if goals else 0
+            goal_progress = len([g for g in goals if g.status == StatusEnum.COMPLETED]) / max(len(goals), 1) * 100 if goals else 0
             
             prompt = f"""
             Analyze this week's productivity data and provide insights:
@@ -238,7 +238,7 @@ class AIService:
         Evaluate readiness for moving to the next entrepreneurial phase.
         """
         try:
-            completed_goals = len([g for g in goals if g.status == "Completed"])
+            completed_goals = len([g for g in goals if g.status == StatusEnum.COMPLETED])
             total_goals = len(goals)
             completion_rate = (completed_goals / max(total_goals, 1)) * 100
             
