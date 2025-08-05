@@ -7,6 +7,7 @@ from app.api.v1.routes import ai_context
 from app.api.v1.routes import job_metrics
 from app.api.v1.routes import ai_service
 from app.core.database import create_db_and_tables
+from fastapi_mcp import FastApiMCP
 
 app = FastAPI(
     title="AI-Powered Productivity System",
@@ -48,3 +49,18 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "service": "AI Productivity System"}
+
+
+mcp = FastApiMCP(
+    app,
+    name="AI-Powered Productivity System",
+    description="A comprehensive productivity system with AI agents for entrepreneurs",
+    describe_all_responses=True,
+    describe_full_response_schema=True,
+)
+
+mcp.mount()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -7,3 +7,4 @@ google-generativeai==0.3.2
 psycopg2-binary==2.9.9
 httpx==0.25.2
 python-dateutil==2.9.0.post0
+fastapi-mcp==0.4.0
