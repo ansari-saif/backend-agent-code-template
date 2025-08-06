@@ -19,18 +19,18 @@ class Task(SQLModel, table=True):
     deadline: Optional[datetime] = None
     priority: TaskPriorityEnum = Field(
         default=TaskPriorityEnum.MEDIUM,
-        sa_column=Column(Enum(TaskPriorityEnum, name='taskpriorityenum', create_type=False), nullable=False)
+        sa_column=Column(Enum(TaskPriorityEnum, name='taskpriorityenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
     ai_generated: bool = Field(default=False)
     completion_status: CompletionStatusEnum = Field(
         default=CompletionStatusEnum.PENDING,
-        sa_column=Column(Enum(CompletionStatusEnum, name='completionstatusenum', create_type=False), nullable=False)
+        sa_column=Column(Enum(CompletionStatusEnum, name='completionstatusenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
     estimated_duration: Optional[int] = Field(default=None, ge=0)  # minutes
     actual_duration: Optional[int] = Field(default=None, ge=0)     # minutes
     energy_required: EnergyRequiredEnum = Field(
         default=EnergyRequiredEnum.MEDIUM,
-        sa_column=Column(Enum(EnergyRequiredEnum, name='energyrequiredenum', create_type=False), nullable=False)
+        sa_column=Column(Enum(EnergyRequiredEnum, name='energyrequiredenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
     
     # Relationships
