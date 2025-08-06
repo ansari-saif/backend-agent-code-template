@@ -6,7 +6,8 @@ from app.core.database import get_session
 from app.services.ai_service import AIService
 from app.models.user import User, PhaseEnum
 from app.models.goal import Goal, StatusEnum, GoalTypeEnum
-from app.models.task import Task, CompletionStatusEnum, TaskCreate, TaskPriorityEnum, EnergyRequiredEnum
+from app.models.task import Task
+from app.schemas.task import CompletionStatusEnum, TaskCreate, TaskPriorityEnum, EnergyRequiredEnum
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics

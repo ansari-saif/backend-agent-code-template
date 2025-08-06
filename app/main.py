@@ -21,13 +21,13 @@ def on_startup():
     create_db_and_tables()
 
 # Include all API routes
-app.include_router(user.router, prefix="/users", tags=["users"])
-app.include_router(goal.router, prefix="/goals", tags=["goals"])
+# app.include_router(user.router, prefix="/users", tags=["users"])
+# app.include_router(goal.router, prefix="/goals", tags=["goals"])
 app.include_router(task.router, prefix="/tasks", tags=["tasks"])
-app.include_router(progress_log.router, prefix="/progress-logs", tags=["progress-logs"])
-app.include_router(ai_context.router, prefix="/ai-context", tags=["ai-context"])
-app.include_router(job_metrics.router, prefix="/job-metrics", tags=["job-metrics"])
-app.include_router(ai_service.router, prefix="/ai", tags=["ai-service"])
+# app.include_router(progress_log.router, prefix="/progress-logs", tags=["progress-logs"])
+# app.include_router(ai_context.router, prefix="/ai-context", tags=["ai-context"])
+# app.include_router(job_metrics.router, prefix="/job-metrics", tags=["job-metrics"])
+# app.include_router(ai_service.router, prefix="/ai", tags=["ai-service"])
 
 @app.get("/")
 def read_root():

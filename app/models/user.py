@@ -1,34 +1,21 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from datetime import date, time
-from enum import Enum
 from sqlalchemy import Column, String
+from app.schemas.user import TimezoneEnum, PhaseEnum, EnergyProfileEnum
+
+if TYPE_CHECKING:
+    from app.models.goal import Goal
+    from app.models.task import Task
+    from app.models.progress_log import ProgressLog
+    from app.models.ai_context import AIContext
+    from app.models.job_metrics import JobMetrics
 
 
-class TimezoneEnum(str, Enum):
-    UTC = "UTC"
-    EST = "EST"
-    PST = "PST"
-    CST = "CST"
-    MST = "MST"
-    IST = "IST"
-
-
-class PhaseEnum(str, Enum):
-    RESEARCH = "Research"
-    MVP = "MVP"
-    GROWTH = "Growth"
-    SCALE = "Scale"
-    TRANSITION = "Transition"
-
-
-class EnergyProfileEnum(str, Enum):
-    MORNING = "Morning"
-    AFTERNOON = "Afternoon"
-    EVENING = "Evening"
-
-
-class UserBase(SQLModel):
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+    
+    # Core fields
     telegram_id: str = Field(primary_key=True)
     name: str
     birthday: Optional[date] = None
@@ -36,34 +23,21 @@ class UserBase(SQLModel):
         default=TimezoneEnum.UTC,
         sa_column=Column(String, nullable=False)
     )
-    current_phase: PhaseEnum = PhaseEnum.RESEARCH
+    current_phase: PhaseEnum = Field(
+        default=PhaseEnum.RESEARCH,
+        sa_column=Column(String, nullable=False)
+    )
     quit_job_target: Optional[date] = None
-    onboarding_complete: bool = False
+    onboarding_complete: bool = Field(default=False)
     morning_time: Optional[time] = None
-    energy_profile: EnergyProfileEnum = EnergyProfileEnum.MORNING
-
-
-class UserCreate(UserBase):
-    pass
-
-
-class User(UserBase, table=True):
-    __tablename__ = "users"
+    energy_profile: EnergyProfileEnum = Field(
+        default=EnergyProfileEnum.MORNING,
+        sa_column=Column(String, nullable=False)
+    )
     
     # Relationships
     goals: List["Goal"] = Relationship(back_populates="user")
     tasks: List["Task"] = Relationship(back_populates="user")
     progress_logs: List["ProgressLog"] = Relationship(back_populates="user")
     ai_context: Optional["AIContext"] = Relationship(back_populates="user")
-    job_metrics: Optional["JobMetrics"] = Relationship(back_populates="user")
-
-
-class UserUpdate(SQLModel):
-    name: Optional[str] = None
-    birthday: Optional[date] = None
-    timezone: Optional[TimezoneEnum] = None
-    current_phase: Optional[PhaseEnum] = None
-    quit_job_target: Optional[date] = None
-    onboarding_complete: Optional[bool] = None
-    morning_time: Optional[time] = None
-    energy_profile: Optional[EnergyProfileEnum] = None 
+    job_metrics: Optional["JobMetrics"] = Relationship(back_populates="user") 

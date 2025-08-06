@@ -6,9 +6,12 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from app.main import app
 from app.core.database import get_session
-from app.models.user import User, UserCreate, TimezoneEnum, PhaseEnum, EnergyProfileEnum
-from app.models.goal import Goal, GoalCreate, GoalTypeEnum, StatusEnum, PriorityEnum
-from app.models.task import Task, TaskCreate, TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
+from app.models.user import User
+from app.schemas.user import UserCreate, TimezoneEnum, PhaseEnum, EnergyProfileEnum
+from app.models.goal import Goal
+from app.schemas.goal import GoalCreate, GoalTypeEnum, StatusEnum, PriorityEnum
+from app.models.task import Task
+from app.schemas.task import TaskCreate, TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
 from app.models.progress_log import ProgressLog, ProgressLogCreate
 from app.models.ai_context import AIContext, AIContextCreate
 from app.models.job_metrics import JobMetrics, JobMetricsCreate

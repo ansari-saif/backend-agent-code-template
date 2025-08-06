@@ -29,6 +29,7 @@ ENV/
 .vscode/
 *.swp
 *.swo
+.DS_Store
 
 # Docker
 .docker/
