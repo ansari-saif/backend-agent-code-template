@@ -15,28 +15,6 @@ USER_ID = "5976080378"
 @router.post("/", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED, operation_id= "create_task")
 def create_task(task: schemas.TaskCreate, session: Session = Depends(get_session)):
     """Create a new task."""
-    # Verify user exists
-    user = session.get(User, task.user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    # Verify goal exists if provided
-    if task.goal_id:
-        goal = session.get(Goal, task.goal_id)
-        if not goal:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Goal not found"
-            )
-        # Verify goal belongs to user
-        if goal.user_id != task.user_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Goal does not belong to the specified user"
-            )
     
     db_task = Task(
         user_id=USER_ID,
