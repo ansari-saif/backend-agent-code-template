@@ -12,8 +12,8 @@ from app.schemas.task import CompletionStatusEnum, BulkTaskCreate
 router = APIRouter()
 USER_ID = "5976080378"
 
-@router.post("/", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED)
-def create_task(task: schemas.TaskCreate, session: Session = Depends(get_session), operation_id: str = "create_task"):
+@router.post("/", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED, operation_id= "create_task")
+def create_task(task: schemas.TaskCreate, session: Session = Depends(get_session)):
     """Create a new task."""
     # Verify user exists
     user = session.get(User, task.user_id)
@@ -88,8 +88,8 @@ def read_task(task_id: int, session: Session = Depends(get_session)):
         )
     return task
 
-@router.put("/{task_id}", response_model=schemas.TaskResponse)
-def update_task(task_id: int, task_update: schemas.TaskUpdate, session: Session = Depends(get_session), operation_id: str = "update_task"):
+@router.put("/{task_id}", response_model=schemas.TaskResponse, operation_id= "update_task")
+def update_task(task_id: int, task_update: schemas.TaskUpdate, session: Session = Depends(get_session)):
     """Update a task."""
     task = session.get(Task, task_id)
     if not task:
@@ -164,8 +164,8 @@ def update_task(task_id: int, task_update: schemas.TaskUpdate, session: Session 
 #     tasks = session.exec(statement).all()
 #     return tasks
 
-@router.get("/user/pending", response_model=List[schemas.TaskResponse])
-def get_user_pending_tasks(session: Session = Depends(get_session), operation_id: str = "get_pending_tasks"):
+@router.get("/user/pending", response_model=List[schemas.TaskResponse], operation_id= "get_pending_tasks")
+def get_user_pending_tasks(session: Session = Depends(get_session)):
     """Get all pending tasks for a specific user."""
     # Verify user exists
     # user = session.get(User, user_id)
@@ -182,8 +182,8 @@ def get_user_pending_tasks(session: Session = Depends(get_session), operation_id
     tasks = session.exec(statement).all()
     return tasks
 
-@router.get("/user/today", response_model=List[schemas.TaskResponse])
-def get_user_today_tasks(session: Session = Depends(get_session), operation_id: str = "get_today_tasks"):
+@router.get("/user/today", response_model=List[schemas.TaskResponse], operation_id="get_today_tasks")
+def get_user_today_tasks(session: Session = Depends(get_session)):
     """Get all tasks due today for a specific user."""
     #
     
@@ -213,8 +213,8 @@ def complete_task(task_id: int, session: Session = Depends(get_session)):
     return task
 
 
-@router.post("/bulk", response_model=List[schemas.TaskResponse], status_code=status.HTTP_201_CREATED)
-def create_bulk_tasks(bulk_tasks: BulkTaskCreate, session: Session = Depends(get_session), operation_id: str = "create_bulk_tasks"):
+@router.post("/bulk", response_model=List[schemas.TaskResponse], status_code=status.HTTP_201_CREATED, operation_id= "create_bulk_tasks")
+def create_bulk_tasks(bulk_tasks: BulkTaskCreate, session: Session = Depends(get_session)):
     """Create multiple tasks in a single request."""
     created_tasks = []
     
