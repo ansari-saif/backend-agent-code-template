@@ -6,6 +6,7 @@ from . import ai_context
 from . import job_metrics
 from . import ai_service
 from . import day_log
+from . import log
 
 __all__ = [
     "user",
@@ -16,4 +17,5 @@ __all__ = [
     "job_metrics",
     "ai_service",
     "day_log",
+    "log",
 ]

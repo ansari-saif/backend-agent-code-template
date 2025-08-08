@@ -12,6 +12,7 @@ from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
 from app.models.day_log import DayLog
+from app.models.log import Log
 
 # Use SQLite for development, PostgreSQL for production
 database_url = settings.DATABASE_URL
