@@ -1,9 +1,10 @@
 from fastapi import HTTPException
 from sqlmodel import Session, select
-from app.models.todo import Todo, TodoCreate, TodoUpdate
+from app.models.todo import Todo
+from app.schemas.todo import TodoCreate, TodoUpdate
 
 def create_todo_service(todo_data: TodoCreate, session: Session):
-    todo = Todo.from_orm(todo_data)
+    todo = Todo(**todo_data.dict())
     session.add(todo)
     session.commit()
     session.refresh(todo)
