@@ -1,9 +1,11 @@
-from pydantic import BaseModel
 from typing import Optional
+from pydantic import BaseModel
+
 
 class TodoCreate(BaseModel):
     title: str
     description: Optional[str] = None
+
 
 class TodoRead(BaseModel):
     id: int
@@ -14,7 +16,8 @@ class TodoRead(BaseModel):
     class Config:
         orm_mode = True
 
-class TodoUpdateSchema(BaseModel):
+
+class TodoUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     is_completed: Optional[bool] = None

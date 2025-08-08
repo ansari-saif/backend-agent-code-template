@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from app.models.todo import Todo, TodoCreate
-from app.schemas.todo import TodoRead, TodoUpdateSchema
+from app.models.todo import Todo
+from app.schemas.todo import TodoCreate, TodoRead, TodoUpdate
 from app.core.database import get_session
 from app.services.todo_service import (
     create_todo_service, delete_todo_service, get_todo_service, list_all_todo_service, update_todo_service
@@ -20,7 +20,7 @@ def get_todo(todo_id: int, session: Session = Depends(get_session)):
     return todo
 
 @router.put("/{todo_id}", response_model=TodoRead, tags=["todo"])
-def update_todo(todo_id: int, todo_data: TodoUpdateSchema, session: Session = Depends(get_session)):
+def update_todo(todo_id: int, todo_data: TodoUpdate, session: Session = Depends(get_session)):
     updated_todo = update_todo_service(todo_id, todo_data, session)
     return updated_todo
 
