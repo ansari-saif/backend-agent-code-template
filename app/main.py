@@ -8,6 +8,7 @@ from app.api.v1.routes import job_metrics
 from app.api.v1.routes import ai_service
 from app.api.v1.routes import day_log
 from app.api.v1.routes import log
+from app.api.v1.routes import prompt
 from app.core.database import create_db_and_tables
 from fastapi_mcp import FastApiMCP
 
@@ -32,6 +33,7 @@ app.include_router(job_metrics.router, prefix="/job-metrics", tags=["job-metrics
 app.include_router(ai_service.router, prefix="/ai", tags=["ai-service"])
 app.include_router(day_log.router, prefix="/day-logs", tags=["day-logs"])
 app.include_router(log.router, prefix="/log", tags=["log"])
+app.include_router(prompt.router, prefix="/prompts", tags=["prompts"])
 
 @app.get("/")
 def read_root():

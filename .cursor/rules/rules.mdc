@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+while running command always make sure this source venv/bin/activate

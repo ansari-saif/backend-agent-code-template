@@ -76,3 +76,6 @@ Naming and imports
    - Services: `<resource>_service.py` with verbs for functions.
    - Schemas: `Create/Response/Update` suffixes; enums in schemas if shared.
    - Routes: perform request validation + error mapping; delegate business logic to services; perform DB existence checks (e.g., verify `user_id`) before service calls when appropriate.
+
+
+Note :  always add created_at and updated_at while defining new model 

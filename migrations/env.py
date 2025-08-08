@@ -6,6 +6,14 @@ from sqlalchemy import pool
 from alembic import context
 from app.core.config import settings
 from app.models.user import User  # Import your models
+from app.models.prompt import Prompt
+from app.models.task import Task
+from app.models.goal import Goal
+from app.models.progress_log import ProgressLog
+from app.models.ai_context import AIContext
+from app.models.job_metrics import JobMetrics
+from app.models.day_log import DayLog
+from app.models.log import Log
 from sqlmodel import SQLModel
 
 # this is the Alembic Config object, which provides
