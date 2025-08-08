@@ -470,6 +470,118 @@ class TestCareerTransitionAnalysis:
                     mock_model.assert_called_once_with('gemini-2.5-flash')
 
 
+class TestGoalsAnalysis:
+    """Test goals analysis generation (Agent 7)."""
+
+    @pytest.mark.asyncio
+    async def test_analyze_goals_success(self, mock_ai_service, sample_goals, sample_progress_logs):
+        """Test successful goals analysis generation."""
+        mock_response = Mock()
+        mock_response.text = '''```json
+        {
+            "overall_status": "Good",
+            "completion_assessment": "On Track",
+            "key_insights": [
+                "Strong progress on MVP goals",
+                "Consistent goal completion rate",
+                "Good priority balance"
+            ],
+            "success_patterns": [
+                "Regular progress tracking",
+                "Focus on high-priority items"
+            ],
+            "challenges": [
+                "Some goals need more detailed milestones",
+                "Long-term goals need more attention"
+            ],
+            "recommendations": [
+                "Break down complex goals into smaller tasks",
+                "Set clear weekly milestones",
+                "Review and adjust priorities monthly"
+            ],
+            "priority_adjustments": [
+                "Increase focus on user acquisition goals",
+                "Balance technical and business objectives"
+            ],
+            "achievement_score": 75,
+            "focus_areas": [
+                "User growth metrics",
+                "Technical infrastructure"
+            ]
+        }
+        ```'''
+        mock_ai_service.model.generate_content.return_value = mock_response
+
+        # Mark one goal as completed for testing
+        sample_goals[0].status = StatusEnum.COMPLETED
+        sample_goals[1].status = StatusEnum.ACTIVE
+        sample_goals[1].completion_percentage = 60
+
+        analysis = await mock_ai_service.analyze_goals(
+            goals=sample_goals,
+            progress_logs=sample_progress_logs
+        )
+
+        assert analysis["overall_status"] == "Good"
+        assert analysis["completion_assessment"] == "On Track"
+        assert len(analysis["key_insights"]) == 3
+        assert len(analysis["success_patterns"]) == 2
+        assert len(analysis["challenges"]) == 2
+        assert len(analysis["recommendations"]) == 3
+        assert len(analysis["priority_adjustments"]) == 2
+        assert analysis["achievement_score"] == 75
+        assert len(analysis["focus_areas"]) == 2
+
+        # Verify the call was made with correct prompt context
+        mock_ai_service.model.generate_content.assert_called_once()
+        call_args = mock_ai_service.model.generate_content.call_args[0][0]
+        assert "Goal Metrics:" in call_args
+        assert "Total Goals: 2" in call_args
+        assert "Completed: 1" in call_args
+        assert "In Progress: 1" in call_args
+
+    @pytest.mark.asyncio
+    async def test_analyze_goals_no_progress_logs(self, mock_ai_service, sample_goals):
+        """Test goals analysis without progress logs."""
+        mock_response = Mock()
+        mock_response.text = '''```json
+        {
+            "overall_status": "Average",
+            "completion_assessment": "On Track",
+            "key_insights": ["Regular goal setting maintained"],
+            "success_patterns": ["Consistent tracking"],
+            "challenges": ["Need more progress data"],
+            "recommendations": ["Start tracking daily progress"],
+            "priority_adjustments": ["Review goal priorities"],
+            "achievement_score": 65,
+            "focus_areas": ["Progress tracking", "Goal completion"]
+        }
+        ```'''
+        mock_ai_service.model.generate_content.return_value = mock_response
+
+        analysis = await mock_ai_service.analyze_goals(goals=sample_goals)
+
+        assert analysis["overall_status"] == "Average"
+        assert "progress data" in analysis["challenges"][0]
+        mock_ai_service.model.generate_content.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_analyze_goals_ai_failure(self, mock_ai_service, sample_goals):
+        """Test goals analysis when AI fails."""
+        mock_ai_service.model.generate_content.side_effect = Exception("AI service error")
+
+        analysis = await mock_ai_service.analyze_goals(goals=sample_goals)
+
+        # Should return fallback analysis
+        assert "overall_status" in analysis
+        assert "completion_assessment" in analysis
+        assert "key_insights" in analysis
+        assert "recommendations" in analysis
+        assert isinstance(analysis["achievement_score"], int)
+        assert analysis["achievement_score"] >= 0
+        assert analysis["achievement_score"] <= 100
+
+
 class TestAIServiceIntegration:
     """Integration tests for AI Service with realistic scenarios."""
 

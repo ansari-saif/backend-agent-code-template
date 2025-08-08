@@ -812,3 +812,189 @@ class TestEndToEndUserScenarios:
                         # The AI service calculates completion based on completed vs total goals
                         # Since we're only creating 1 goal and it's not marked as completed, it shows 0.0%
                         assert "Goal Completion Rate: 0.0%" in call_args 
+
+    @pytest.mark.asyncio
+    async def test_goals_analysis_lifecycle(self, session: Session):
+        """Test complete lifecycle of goals analysis with different goal states."""
+        
+        # Setup user with diverse goals
+        user = User(
+            telegram_id="goals_user_001",
+            name="Goal Getter",
+            current_phase=PhaseEnum.MVP,
+            energy_profile=EnergyProfileEnum.MORNING,
+            onboarding_complete=True,
+            quit_job_target=date.today() + timedelta(days=90)
+        )
+        session.add(user)
+        session.commit()
+
+        # Create diverse set of goals
+        goals = [
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Complete MVP Development",
+                phase=PhaseEnum.MVP,
+                priority=PriorityEnum.HIGH,
+                status=StatusEnum.ACTIVE,
+                completion_percentage=75.0
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Acquire First 10 Beta Users",
+                phase=PhaseEnum.MVP,
+                priority=PriorityEnum.HIGH,
+                status=StatusEnum.ACTIVE,
+                completion_percentage=30.0
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Setup CI/CD Pipeline",
+                phase=PhaseEnum.MVP,
+                priority=PriorityEnum.MEDIUM,
+                status=StatusEnum.COMPLETED,
+                completion_percentage=100.0
+            )
+        ]
+        for goal in goals:
+            session.add(goal)
+        session.commit()
+
+        # Create progress logs showing improvement
+        progress_logs = []
+        for i in range(14):  # 2 weeks of data
+            log = ProgressLog(
+                user_id=user.telegram_id,
+                date=date.today() - timedelta(days=13-i),
+                tasks_completed=2 + min(i//3, 2),  # Gradually improving completion
+                tasks_planned=4,
+                mood_score=6 + min(i//4, 3),  # Improving mood
+                energy_level=7 + min(i//5, 2),  # Stable high energy
+                focus_score=6 + min(i//4, 3),  # Improving focus
+                daily_reflection=f"Day {i+1}: Making steady progress on goals"
+            )
+            progress_logs.append(log)
+            session.add(log)
+        session.commit()
+
+        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-api-key'}):
+            with patch('google.generativeai.configure'):
+                with patch('google.generativeai.GenerativeModel') as mock_model:
+                    mock_instance = Mock()
+                    mock_model.return_value = mock_instance
+                    
+                    # Initial goals analysis
+                    initial_response = Mock(text='''{"overall_status": "Good",
+                        "completion_assessment": "On Track",
+                        "key_insights": [
+                            "Strong progress on MVP development",
+                            "CI/CD goal completed ahead of schedule",
+                            "User acquisition needs more focus"
+                        ],
+                        "success_patterns": [
+                            "Technical goals well-executed",
+                            "Consistent daily progress"
+                        ],
+                        "challenges": [
+                            "User acquisition lagging behind",
+                            "Need to balance technical and business goals"
+                        ],
+                        "recommendations": [
+                            "Increase focus on user acquisition",
+                            "Start user feedback collection",
+                            "Maintain technical momentum"
+                        ],
+                        "priority_adjustments": [
+                            "Elevate user acquisition activities",
+                            "Plan next technical milestone"
+                        ],
+                        "achievement_score": 75,
+                        "focus_areas": [
+                            "User growth",
+                            "MVP feature completion"
+                        ]}''')
+                    
+                    # Updated analysis after goal completion
+                    updated_response = Mock(text='''{"overall_status": "Excellent",
+                        "completion_assessment": "Ahead",
+                        "key_insights": [
+                            "MVP development nearing completion",
+                            "Multiple goals completed successfully",
+                            "Ready for user testing phase"
+                        ],
+                        "success_patterns": [
+                            "Balanced progress across goals",
+                            "Strong technical foundation"
+                        ],
+                        "challenges": [
+                            "Scaling user acquisition efforts",
+                            "Maintaining development pace"
+                        ],
+                        "recommendations": [
+                            "Begin user onboarding preparation",
+                            "Document MVP features",
+                            "Plan growth phase goals"
+                        ],
+                        "priority_adjustments": [
+                            "Shift focus to user experience",
+                            "Prepare for growth phase"
+                        ],
+                        "achievement_score": 85,
+                        "focus_areas": [
+                            "User onboarding",
+                            "Growth preparation"
+                        ]}''')
+                    
+                    mock_instance.generate_content.side_effect = [initial_response, updated_response]
+                    
+                    ai_service = AIService()
+                    ai_service.model = mock_instance
+                    
+                    # Initial goals analysis
+                    initial_analysis = await ai_service.analyze_goals(
+                        goals=goals,
+                        progress_logs=progress_logs
+                    )
+                    
+                    # Verify initial analysis
+                    assert initial_analysis["overall_status"] == "Good"
+                    assert initial_analysis["completion_assessment"] == "On Track"
+                    assert len(initial_analysis["key_insights"]) == 3
+                    assert "MVP development" in initial_analysis["key_insights"][0]
+                    assert initial_analysis["achievement_score"] == 75
+                    
+                    # Update goal progress
+                    goals[0].completion_percentage = 100.0
+                    goals[0].status = StatusEnum.COMPLETED
+                    goals[1].completion_percentage = 60.0
+                    session.commit()
+                    
+                    # Get updated analysis
+                    updated_analysis = await ai_service.analyze_goals(
+                        goals=goals,
+                        progress_logs=progress_logs
+                    )
+                    
+                    # Verify updated analysis reflects progress
+                    assert updated_analysis["overall_status"] == "Excellent"
+                    assert updated_analysis["completion_assessment"] == "Ahead"
+                    assert updated_analysis["achievement_score"] == 85
+                    assert "MVP development nearing completion" in updated_analysis["key_insights"][0]
+                    assert "growth phase" in str(updated_analysis["recommendations"]).lower()
+                    
+                    # Verify AI was called with correct context each time
+                    call_args = mock_instance.generate_content.call_args_list
+                    assert len(call_args) == 2
+                    
+                    # First call should mention original completion percentages
+                    first_call = call_args[0][0][0]
+                    assert "75.0%" in first_call  # Original MVP completion
+                    assert "30.0%" in first_call  # Original user acquisition completion
+                    
+                    # Second call should mention updated completion percentages
+                    second_call = call_args[1][0][0]
+                    assert "100.0%" in second_call  # Updated MVP completion
+                    assert "60.0%" in second_call  # Updated user acquisition completion

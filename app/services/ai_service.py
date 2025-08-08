@@ -424,3 +424,144 @@ class AIService:
                 "timeline_recommendation": "6-12 months",
                 "confidence_score": 70
             }
+
+    async def analyze_goals(self, goals: List[Goal], progress_logs: Optional[List[ProgressLog]] = None) -> Dict[str, Any]:
+        """
+        AI Agent 7: Goals Analysis Intelligence
+        Analyze goals progress, patterns, and provide strategic insights for goal achievement.
+        """
+        try:
+            # Calculate goal metrics
+            total_goals = len(goals)
+            completed_goals = len([g for g in goals if g.status == StatusEnum.COMPLETED])
+            in_progress_goals = len([g for g in goals if g.status == StatusEnum.ACTIVE])
+            paused_goals = len([g for g in goals if g.status == StatusEnum.PAUSED])
+            completion_rate = (completed_goals / max(total_goals, 1)) * 100
+
+            # Calculate average completion percentage for in-progress goals
+            active_goals_completion = [g.completion_percentage for g in goals if g.status == StatusEnum.ACTIVE]
+            avg_completion_percentage = sum(active_goals_completion) / max(len(active_goals_completion), 1) if active_goals_completion else 0
+
+            # Analyze progress patterns if logs are provided
+            progress_trend = "steady"
+            if progress_logs:
+                recent_logs = sorted(progress_logs, key=lambda x: x.created_at)[-7:]  # Last 7 logs
+                if recent_logs:
+                    start_completion = recent_logs[0].tasks_completed
+                    end_completion = recent_logs[-1].tasks_completed
+                    progress_trend = "improving" if end_completion > start_completion else "declining" if end_completion < start_completion else "steady"
+
+            # Prepare goals context for analysis
+            goals_context = []
+            for goal in goals:
+                goals_context.append({
+                    "description": goal.description,
+                    "priority": goal.priority.value,
+                    "completion": f"{goal.completion_percentage}%",
+                    "phase": goal.phase.value,
+                    "status": goal.status.value,
+                    "created_at": goal.created_at.isoformat() if goal.created_at else None
+                })
+
+            prompt = f"""
+            Analyze entrepreneurial goals and provide strategic insights:
+
+            Goal Metrics:
+            - Total Goals: {total_goals}
+            - Completed: {completed_goals}
+            - In Progress: {in_progress_goals}
+            - Paused: {paused_goals}
+            - Overall Completion Rate: {completion_rate:.1f}%
+            - Avg Progress on Active Goals: {avg_completion_percentage:.1f}%
+            - Progress Trend: {progress_trend}
+
+            Goals Details:
+            {json.dumps(goals_context, indent=2)}
+
+            Provide analysis in JSON format:
+            {{
+                "overall_status": "Excellent/Good/Average/Needs Attention",
+                "completion_assessment": "Ahead/On Track/Behind Schedule",
+                "key_insights": ["insight1", "insight2", "insight3"],
+                "success_patterns": ["pattern1", "pattern2"],
+                "challenges": ["challenge1", "challenge2"],
+                "recommendations": ["recommendation1", "recommendation2", "recommendation3"],
+                "priority_adjustments": ["adjustment1", "adjustment2"],
+                "achievement_score": 85,
+                "focus_areas": ["area1", "area2"]
+            }}
+
+            Consider:
+            - Goal dependencies and sequencing
+            - Balance between short and long-term goals
+            - Resource allocation and priority alignment
+            - Progress velocity and momentum
+            - Risk factors and mitigation strategies
+            """
+
+            response = self.model.generate_content(prompt)
+
+            # Extract JSON from response
+            response_text = response.text.strip()
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_text = response_text
+
+            analysis = json.loads(json_text)
+            return analysis
+
+        except Exception as e:
+            # Calculate basic metrics even in error case
+            total_goals = len(goals)
+            completed_goals = len([g for g in goals if g.status == StatusEnum.COMPLETED])
+            in_progress_goals = len([g for g in goals if g.status == StatusEnum.ACTIVE])
+            completion_rate = (completed_goals / max(total_goals, 1)) * 100
+            active_goals_completion = [g.completion_percentage for g in goals if g.status == StatusEnum.ACTIVE]
+            avg_completion_percentage = sum(active_goals_completion) / max(len(active_goals_completion), 1) if active_goals_completion else 0
+
+            # Provide fallback analysis
+            if total_goals == 0:
+                return {
+                    "overall_status": "Average",
+                    "completion_assessment": "On Track",
+                    "key_insights": ["No goals have been defined", "Start setting goals to track progress"],
+                    "success_patterns": ["Consistent tracking", "Regular planning"],
+                    "challenges": ["Need more progress data"],
+                    "recommendations": ["Start setting goals", "Begin tracking daily progress"],
+                    "priority_adjustments": ["Review goal priorities"],
+                    "achievement_score": 65,
+                    "focus_areas": ["Progress tracking", "Goal completion"]
+                }
+
+            # Calculate status based on completion rate and active goals
+            status = "Good" if completion_rate >= 50 or (in_progress_goals > 0 and avg_completion_percentage >= 60) else "Average" if completion_rate >= 30 or in_progress_goals > 0 else "Needs Attention"
+            assessment = "Ahead" if completion_rate >= 80 else "On Track" if completion_rate >= 50 or (in_progress_goals > 0 and avg_completion_percentage >= 50) else "Behind Schedule"
+            
+            return {
+                "overall_status": status,
+                "completion_assessment": assessment,
+                "key_insights": [
+                    "Regular goal tracking is maintained",
+                    f"{completed_goals} of {total_goals} goals completed",
+                    f"{in_progress_goals} goals actively in progress"
+                ],
+                "success_patterns": [
+                    "Consistent goal setting",
+                    "Regular progress tracking"
+                ],
+                "challenges": [
+                    "Some goals need more progress",
+                    "Need to maintain momentum"
+                ],
+                "recommendations": [
+                    "Focus on completing in-progress goals",
+                    "Review and update goal priorities",
+                    "Break down larger goals into smaller milestones"
+                ],
+                "priority_adjustments": ["Balance workload across goals"],
+                "achievement_score": int(completion_rate),
+                "focus_areas": ["Goal completion", "Progress tracking"]
+            }

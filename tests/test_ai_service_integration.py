@@ -204,3 +204,103 @@ class TestAIServiceIntegration:
                "research" in t["description"].lower()
         ]
         assert len(goal_related_tasks) > 0
+
+    def test_goals_analysis_success(self, client, session: Session, test_user, test_goals, test_progress_logs):
+        """Test goals analysis with complete data."""
+        # Update goal statuses for testing
+        test_goals[0].status = StatusEnum.COMPLETED
+        test_goals[0].completion_percentage = 100
+        test_goals[1].status = StatusEnum.ACTIVE
+        test_goals[1].completion_percentage = 60
+        session.commit()
+
+        request_data = {
+            "user_id": test_user.telegram_id
+        }
+        response = client.post("/ai/analyze-goals", json=request_data)
+        assert response.status_code == 200
+        analysis = response.json()
+
+        # Verify analysis structure and content
+        assert "overall_status" in analysis
+        assert "completion_assessment" in analysis
+        assert "key_insights" in analysis
+        assert "success_patterns" in analysis
+        assert "challenges" in analysis
+        assert "recommendations" in analysis
+        assert "priority_adjustments" in analysis
+        assert "achievement_score" in analysis
+        assert "focus_areas" in analysis
+
+        # Verify analysis reflects actual goal state
+        assert isinstance(analysis["achievement_score"], int)
+        assert analysis["achievement_score"] >= 0
+        assert analysis["achievement_score"] <= 100
+        assert len(analysis["key_insights"]) > 0
+        assert len(analysis["recommendations"]) > 0
+
+    def test_goals_analysis_no_goals(self, client, session: Session, test_user):
+        """Test goals analysis with no goals."""
+        request_data = {
+            "user_id": test_user.telegram_id
+        }
+        response = client.post("/ai/analyze-goals", json=request_data)
+        assert response.status_code == 200
+        analysis = response.json()
+
+        # Should provide meaningful analysis even with no goals
+        assert analysis["overall_status"] in ["Needs Attention", "Average"]
+        assert "no goals" in str(analysis["key_insights"]).lower() or \
+               "start setting goals" in str(analysis["recommendations"]).lower()
+
+    def test_goals_analysis_all_completed(self, client, session: Session, test_user, test_goals):
+        """Test goals analysis with all goals completed."""
+        # Mark all goals as completed
+        for goal in test_goals:
+            goal.status = StatusEnum.COMPLETED
+            goal.completion_percentage = 100
+        session.commit()
+
+        request_data = {
+            "user_id": test_user.telegram_id
+        }
+        response = client.post("/ai/analyze-goals", json=request_data)
+        assert response.status_code == 200
+        analysis = response.json()
+
+        # Should reflect excellent progress
+        assert analysis["overall_status"] in ["Excellent", "Good"]
+        assert analysis["completion_assessment"] in ["Ahead", "On Track"]
+        assert analysis["achievement_score"] > 80  # High score for all completed
+
+    def test_goals_analysis_invalid_user(self, client):
+        """Test goals analysis with invalid user ID."""
+        request_data = {
+            "user_id": "non_existent_user"
+        }
+        response = client.post("/ai/analyze-goals", json=request_data)
+        assert response.status_code == 404
+        assert "user not found" in response.json()["detail"].lower()
+
+    def test_goals_analysis_with_progress_trend(self, client, session: Session, test_user, test_goals, test_progress_logs):
+        """Test goals analysis with progress trend data."""
+        # Update progress logs to show improvement
+        for i, log in enumerate(test_progress_logs):
+            log.tasks_completed = 2 + i  # Increasing completion trend
+        session.commit()
+
+        request_data = {
+            "user_id": test_user.telegram_id
+        }
+        response = client.post("/ai/analyze-goals", json=request_data)
+        assert response.status_code == 200
+        analysis = response.json()
+
+        # Should mention positive trend
+        trend_mentioned = any(
+            "improving" in insight.lower() or 
+            "progress" in insight.lower() or 
+            "increasing" in insight.lower() 
+            for insight in analysis["key_insights"]
+        )
+        assert trend_mentioned
