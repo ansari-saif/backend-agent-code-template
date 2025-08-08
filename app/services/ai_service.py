@@ -597,7 +597,7 @@ class AIService:
             day_start = datetime.combine(target_date, datetime.min.time())
             next_day_start = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
 
-            # Fetch relevant data for the day
+            # Optional DayLog record for narrative and environment context
             day_log = session.exec(
                 select(DayLog).where(DayLog.user_id == user_id, DayLog.date == target_date)
             ).first()
@@ -632,6 +632,32 @@ class AIService:
             completed_tasks = [t for t in tasks if t.completion_status == CompletionStatusEnum.COMPLETED]
             in_progress_tasks = [t for t in tasks if t.completion_status == CompletionStatusEnum.IN_PROGRESS]
 
+            # Prepare DayLog context if available
+            day_log_context = None
+            if day_log:
+                # Compute duration in hours if both timestamps present
+                duration_hours = None
+                if day_log.start_time and day_log.end_time:
+                    try:
+                        duration_hours = (
+                            (day_log.end_time - day_log.start_time).total_seconds() / 3600.0
+                        )
+                    except Exception:
+                        duration_hours = None
+                day_log_context = {
+                    "summary": day_log.summary,
+                    "highlights": day_log.highlights,
+                    "challenges": day_log.challenges,
+                    "learnings": day_log.learnings,
+                    "gratitude": day_log.gratitude,
+                    "tomorrow_plan": day_log.tomorrow_plan,
+                    "weather": day_log.weather,
+                    "location": day_log.location,
+                    "start_time": day_log.start_time.isoformat() if day_log.start_time else None,
+                    "end_time": day_log.end_time.isoformat() if day_log.end_time else None,
+                    "duration_hours": duration_hours,
+                }
+
             context = {
                 "day_summary": {
                     "mood": (progress_entry.mood_score if progress_entry else None),
@@ -647,6 +673,7 @@ class AIService:
                     "productivity": None,
                     "stress_level": (job_metrics.stress_level if job_metrics else None),
                 },
+                "day_log": day_log_context,
             }
             
             prompt = f"""
