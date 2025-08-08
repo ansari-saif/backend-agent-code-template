@@ -8,8 +8,10 @@ from app.models.job_metrics import JobMetrics
 from app.schemas.job_metrics import JobMetricsCreate, JobMetricsUpdate, JobMetricsResponse
 from app.models.user import User
 from app.services.job_metrics_service import analyze_job_metrics_with_ai, AIServiceError
+from app.services.ai_service import AIService
 
 router = APIRouter()
+ai_service = AIService()
 
 @router.post("/", response_model=JobMetricsResponse, status_code=status.HTTP_201_CREATED)
 def create_job_metrics(job_metrics: JobMetricsCreate, session: Session = Depends(get_session)):
@@ -130,6 +132,44 @@ def get_user_job_metrics(user_id: str, session: Session = Depends(get_session)):
         )
     
     return job_metrics
+
+
+@router.post("/user/{user_id}/generate", response_model=JobMetricsResponse, status_code=status.HTTP_201_CREATED)
+async def generate_job_metrics_for_user(user_id: str, session: Session = Depends(get_session)):
+    """
+    Generate initial JobMetrics for a user using AI when none exist.
+    """
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    existing = session.exec(select(JobMetrics).where(JobMetrics.user_id == user_id)).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job metrics already exist for this user")
+
+    data = await ai_service.generate_job_metrics_for_user(session=session, user_id=user_id)
+
+    # Required fields: stress_level, job_satisfaction
+    stress_level = int(data.get("stress_level", 5))
+    job_satisfaction = int(data.get("job_satisfaction", 5))
+
+    db = JobMetrics(
+        user_id=user_id,
+        stress_level=stress_level,
+        job_satisfaction=job_satisfaction,
+        startup_revenue=(Decimal(str(data.get("startup_revenue"))) if data.get("startup_revenue") is not None else None),
+        current_salary=(Decimal(str(data.get("current_salary"))) if data.get("current_salary") is not None else None),
+        monthly_expenses=(Decimal(str(data.get("monthly_expenses"))) if data.get("monthly_expenses") is not None else None),
+        runway_months=(float(data.get("runway_months")) if data.get("runway_months") is not None else None),
+        quit_readiness_score=float(data.get("quit_readiness_score", 0)),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    session.add(db)
+    session.commit()
+    session.refresh(db)
+    return db
 
 @router.patch("/user/{user_id}/financial", response_model=JobMetricsResponse)
 def update_financial_metrics(

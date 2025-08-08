@@ -757,3 +757,74 @@ class AIService:
                 "gratitude": "Grateful for the ability to keep moving forward.",
                 "tomorrow_plan": "- Pick up remaining tasks\n- Plan one quick win early"
             }
+
+    async def generate_job_metrics_for_user(
+        self,
+        session: Session,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """
+        AI Agent 10: Job Metrics Generator
+        Estimate or synthesize job metrics fields from recent activity context.
+        Returns a dict suitable to construct a JobMetrics model.
+        """
+        try:
+            # Collect very lightweight context for AI prompt (recent tasks / logs counts)
+            today = datetime.utcnow().date()
+            start = datetime.combine(today - timedelta(days=7), datetime.min.time())
+            end = datetime.combine(today + timedelta(days=1), datetime.min.time())
+
+            recent_tasks = session.query(Task).filter(Task.user_id == user_id, Task.updated_at >= start, Task.updated_at < end).all()
+            completed = len([t for t in recent_tasks if getattr(t, "completion_status", None) == CompletionStatusEnum.COMPLETED])
+            total = len(recent_tasks)
+
+            notes_count = session.query(Log).filter(Log.user_id == user_id, Log.created_at >= start, Log.created_at < end).count()
+
+            context = {
+                "recent_tasks_total": total,
+                "recent_tasks_completed": completed,
+                "recent_notes": notes_count,
+            }
+
+            prompt = f"""
+            Based on the recent productivity context below, estimate reasonable values for job metrics.
+            Context (JSON): {json.dumps(context)}
+
+            Return a JSON object with numeric values only for these keys.
+            If you don't know, return mid-range sensible defaults:
+            {{
+              "stress_level": 1-10 integer,
+              "job_satisfaction": 1-10 integer,
+              "startup_revenue": number or null,
+              "current_salary": number or null,
+              "monthly_expenses": number or null,
+              "runway_months": number or null,
+              "quit_readiness_score": number between 0 and 100
+            }}
+            """
+
+            response = self.model.generate_content(prompt)
+            response_text = response.text.strip()
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_text = response_text
+
+            data = json.loads(json_text)
+            # Ensure required fields exist
+            data.setdefault("stress_level", 5)
+            data.setdefault("job_satisfaction", 5)
+            data.setdefault("quit_readiness_score", 0)
+            return data
+        except Exception:
+            return {
+                "stress_level": 5,
+                "job_satisfaction": 5,
+                "startup_revenue": None,
+                "current_salary": None,
+                "monthly_expenses": None,
+                "runway_months": None,
+                "quit_readiness_score": 0,
+            }
