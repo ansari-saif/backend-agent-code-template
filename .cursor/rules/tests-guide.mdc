@@ -1,3 +1,14 @@
+---
+description: |
+  Testing guidelines for the Diary application. This document outlines best practices, 
+  patterns, and requirements for writing and maintaining tests. It covers unit tests, 
+  integration tests, end-to-end tests, mocking strategies, and test infrastructure setup.
+globs:
+  - "tests/**/*.py"
+  - "run_tests.py"
+  - "pytest.ini"
+alwaysApply: true
+---
 ## Testing Guide
 
 This document explains how to write and run tests for the Diary application.
@@ -162,5 +173,3 @@ python run_tests.py --coverage
 - Ensure you run tests from the project root so imports like `app.*` resolve.
 - Install dependencies: `pip install -r requirements.txt`.
 - If imports fail, check `PYTHONPATH` or activate the project virtualenv.
-
-

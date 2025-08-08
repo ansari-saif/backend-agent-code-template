@@ -1,3 +1,8 @@
+---
+description: FastAPI project architecture conventions for models, schemas, services, and API development patterns
+globs: ["app/**/*.py", "tests/**/*.py", "*.py"]
+alwaysApply: true
+---
 Project conventions
 
 - API routers
