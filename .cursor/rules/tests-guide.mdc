@@ -118,14 +118,12 @@ def test_create_and_read_day_log(client, test_user, sample_day_log_create_data):
 
 ### Writing end‑to‑end (E2E) tests
 
-Combine models, services, and realistic flows. If async, mark with `@pytest.mark.asyncio`. Mock external AI calls to keep tests deterministic.
+Combine models, services, and realistic flows. Mock external AI calls to keep tests deterministic.
 ```python
-import pytest
 from unittest.mock import Mock, patch
 from app.services.ai_service import AIService
 
-@pytest.mark.asyncio
-async def test_ai_daily_tasks_with_mock(session):
+def test_ai_daily_tasks_with_mock(session):
     with patch.dict("os.environ", {"GEMINI_API_KEY": "test-api-key"}):
         with patch("google.generativeai.configure"):
             with patch("google.generativeai.GenerativeModel") as mock_model:
@@ -137,7 +135,7 @@ async def test_ai_daily_tasks_with_mock(session):
 
                 ai_service = AIService()
                 ai_service.model = mock_instance
-                tasks = await ai_service.generate_daily_tasks(user=None, recent_progress=[], pending_goals=[], today_energy_level=5)
+                tasks = ai_service.generate_daily_tasks(user=None, recent_progress=[], pending_goals=[], today_energy_level=5)
                 assert tasks and tasks[0]["description"] == "Task A"
 ```
 
