@@ -5,11 +5,13 @@ from datetime import date, datetime, timedelta
 
 from app.core.database import get_session
 from app.services.day_log_service import create_day_log, create_bulk_day_logs
+from app.services.ai_service import AIService
 from app.models.day_log import DayLog
 from app.models.user import User
 from app.schemas.day_log import DayLogCreate, DayLogResponse, DayLogUpdate, DayLogBulkCreate
 
 router = APIRouter()
+ai_service = AIService()
 
 
 @router.post("/", response_model=DayLogResponse, status_code=status.HTTP_201_CREATED)
@@ -283,3 +285,51 @@ def create_bulk_day_logs_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.post("/generate/{user_id}", response_model=DayLogResponse, status_code=status.HTTP_201_CREATED)
+async def generate_day_log(
+    user_id: str,
+    date_value: date | None = None,
+    session: Session = Depends(get_session)
+):
+    """
+    Generate a DayLog using AI for the given user and optional date (defaults to today).
+    Fills the narrative fields (summary, highlights, challenges, learnings, gratitude, tomorrow_plan).
+    """
+    # Verify user exists
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    target_date = date_value or datetime.utcnow().date()
+
+    # If an entry already exists for that date, return 400
+    existing = session.exec(
+        select(DayLog).where(DayLog.user_id == user_id, DayLog.date == target_date)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Day log already exists for this date")
+
+    # Ask AI for content
+    content = await ai_service.generate_day_log_content(session=session, user_id=user_id, target_date=target_date)
+
+    now = datetime.utcnow()
+    db_log = DayLog(
+        user_id=user_id,
+        date=target_date,
+        start_time=now,
+        summary=content.get("summary"),
+        highlights=content.get("highlights"),
+        challenges=content.get("challenges"),
+        learnings=content.get("learnings"),
+        gratitude=content.get("gratitude"),
+        tomorrow_plan=content.get("tomorrow_plan"),
+        created_at=now,
+        updated_at=now,
+    )
+
+    session.add(db_log)
+    session.commit()
+    session.refresh(db_log)
+    return db_log

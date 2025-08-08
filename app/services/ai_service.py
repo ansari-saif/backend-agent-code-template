@@ -679,3 +679,81 @@ class AIService:
                 "mood_analysis": "Consistent tracking of daily activities",
                 "productivity_insights": "Regular logging supports productivity"
             }
+
+    async def generate_day_log_content(
+        self,
+        session: Session,
+        user_id: str,
+        target_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        AI Agent 9: Day Log Generator
+        Generate day log narrative sections (summary, highlights, challenges, learnings, gratitude, tomorrow_plan)
+        using user's tasks and notes for the given day.
+        """
+        try:
+            day_date = target_date or datetime.utcnow().date()
+
+            # Gather context for the day
+            tasks = session.query(Task).filter(
+                Task.user_id == user_id,
+                Task.updated_at >= datetime.combine(day_date, datetime.min.time()),
+                Task.updated_at < datetime.combine(day_date + timedelta(days=1), datetime.min.time())
+            ).all()
+
+            notes = session.query(Log).filter(
+                Log.user_id == user_id,
+                Log.created_at >= datetime.combine(day_date, datetime.min.time()),
+                Log.created_at < datetime.combine(day_date + timedelta(days=1), datetime.min.time())
+            ).all()
+
+            completed = [t.description for t in tasks if getattr(t, "completion_status", None) == CompletionStatusEnum.COMPLETED]
+            in_progress = [t.description for t in tasks if getattr(t, "completion_status", None) == CompletionStatusEnum.IN_PROGRESS]
+
+            context = {
+                "date": str(day_date),
+                "tasks": {
+                    "completed": completed,
+                    "in_progress": in_progress,
+                },
+                "notes": [getattr(n, "content", "") for n in notes],
+            }
+
+            prompt = f"""
+            You are a helpful productivity assistant. Create a concise day log for the user based on the context.
+
+            Context (JSON):
+            {json.dumps(context, indent=2)}
+
+            Return a JSON object with these fields only:
+            {{
+              "summary": "1-2 sentence overview of the day",
+              "highlights": "bullet-style text capturing wins",
+              "challenges": "bullet-style text capturing blockers",
+              "learnings": "bullet-style text capturing learning",
+              "gratitude": "one short sentence",
+              "tomorrow_plan": "bullet-style text for next steps"
+            }}
+            """
+
+            response = self.model.generate_content(prompt)
+            response_text = response.text.strip()
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_text = response_text
+
+            data = json.loads(json_text)
+            return data
+        except Exception:
+            # Sensible fallback if AI unavailable
+            return {
+                "summary": "Tracked tasks and made steady progress.",
+                "highlights": "- Advanced key tasks\n- Maintained momentum",
+                "challenges": "- Some tasks remained in progress",
+                "learnings": "- Small consistent steps compound",
+                "gratitude": "Grateful for the ability to keep moving forward.",
+                "tomorrow_plan": "- Pick up remaining tasks\n- Plan one quick win early"
+            }
