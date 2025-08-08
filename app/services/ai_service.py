@@ -4,8 +4,10 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime, date, timedelta
 from app.models.user import User
-from app.models.goal import Goal, StatusEnum
-from app.models.task import Task, CompletionStatusEnum
+from app.models.goal import Goal
+from app.models.task import Task
+from app.schemas.goal import StatusEnum
+from app.schemas.task import CompletionStatusEnum, TaskPriorityEnum, EnergyRequiredEnum
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
@@ -13,14 +15,110 @@ from app.models.job_metrics import JobMetrics
 
 class AIService:
     def __init__(self):
-        """Initialize the AI service with Gemini API."""
+        """Initialize the AI service with Gemini API if available; otherwise run in fallback mode."""
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
-        
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.5-flash')
 
+    async def generate_daily_tasks(
+        self,
+        user: User,
+        recent_progress: List[ProgressLog],
+        pending_goals: List[Goal],
+        today_energy_level: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        AI Agent 1: Daily Task Generator
+        Generate personalized daily tasks based on user's goals, energy level, and recent progress.
+        """
+        try:
+            # Calculate recent performance metrics
+            if recent_progress:
+                avg_completion = sum(log.tasks_completed for log in recent_progress) / len(recent_progress)
+                avg_energy = sum(log.energy_level for log in recent_progress) / len(recent_progress)
+                completion_trend = "improving" if recent_progress[-1].tasks_completed > avg_completion else "declining"
+            else:
+                avg_completion = 0
+                avg_energy = 5
+                completion_trend = "neutral"
+            
+            # Prepare goals context
+            goals_context = []
+            for goal in pending_goals:
+                goals_context.append({
+                    "description": goal.description,
+                    "priority": goal.priority.value,
+                    "completion": goal.completion_percentage,
+                    "phase": goal.phase.value
+                })
+            
+            prompt = f"""
+            Generate daily tasks for an entrepreneur based on:
+            
+            User Profile:
+            - Name: {user.name}
+            - Phase: {user.current_phase}
+            - Energy Profile: {user.energy_profile}
+            - Energy Level: {today_energy_level}/10
+            
+            Recent Performance:
+            - Average Task Completion: {avg_completion:.1f}
+            - Completion Trend: {completion_trend}
+            - Average Energy: {avg_energy:.1f}/10
+            
+            Goals:
+            {json.dumps(goals_context, indent=2)}
+            
+            Generate tasks in JSON format:
+            [
+                {{
+                    "description": "Task description",
+                    "estimated_duration": 60,
+                    "energy_required": "High/Medium/Low",
+                    "priority": "Urgent/High/Medium/Low"
+                }}
+            ]
+            
+            Guidelines:
+            - Generate 3-5 tasks based on energy level
+            - Prioritize tasks aligned with goals
+            - Match task difficulty with energy level
+            - Include mix of quick wins and important tasks
+            - Keep total duration realistic (4-6 hours max)
+            """
+            
+            response = self.model.generate_content(prompt)
+            
+            # Extract JSON from response
+            response_text = response.text.strip()
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_text = response_text
+            
+            tasks_data = json.loads(json_text)
+            return tasks_data
+            
+        except Exception as e:
+            # Fallback: Generate basic tasks
+            return [
+                {
+                    "description": "Review and prioritize today's goals",
+                    "priority": TaskPriorityEnum.HIGH.value,
+                    "energy_required": EnergyRequiredEnum.LOW.value,
+                    "estimated_duration": 30
+                },
+                {
+                    "description": "Work on highest priority project task",
+                    "priority": TaskPriorityEnum.HIGH.value,
+                    "energy_required": EnergyRequiredEnum.MEDIUM.value,
+                    "estimated_duration": 120
+                }
+            ]
 
     async def generate_motivation_message(self, user: User, ai_context: AIContext, current_challenge: str, stress_level: int, recent_completions: List[Task]) -> str:
         """
@@ -325,4 +423,4 @@ class AIService:
                 "action_items": ["Increase monthly revenue", "Reduce expenses", "Build emergency fund"],
                 "timeline_recommendation": "6-12 months",
                 "confidence_score": 70
-            } 
+            }

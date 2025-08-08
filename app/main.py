@@ -6,6 +6,7 @@ from app.api.v1.routes import progress_log
 from app.api.v1.routes import ai_context
 from app.api.v1.routes import job_metrics
 from app.api.v1.routes import ai_service
+from app.api.v1.routes import day_log
 from app.core.database import create_db_and_tables
 from fastapi_mcp import FastApiMCP
 
@@ -21,13 +22,14 @@ def on_startup():
     create_db_and_tables()
 
 # Include all API routes
-# app.include_router(user.router, prefix="/users", tags=["users"])
-# app.include_router(goal.router, prefix="/goals", tags=["goals"])
+app.include_router(user.router, prefix="/users", tags=["users"])
+app.include_router(goal.router, prefix="/goals", tags=["goals"])
 app.include_router(task.router, prefix="/tasks", tags=["tasks"])
-# app.include_router(progress_log.router, prefix="/progress-logs", tags=["progress-logs"])
-# app.include_router(ai_context.router, prefix="/ai-context", tags=["ai-context"])
-# app.include_router(job_metrics.router, prefix="/job-metrics", tags=["job-metrics"])
-# app.include_router(ai_service.router, prefix="/ai", tags=["ai-service"])
+app.include_router(progress_log.router, prefix="/progress-logs", tags=["progress-logs"])
+app.include_router(ai_context.router, prefix="/ai-context", tags=["ai-context"])
+app.include_router(job_metrics.router, prefix="/job-metrics", tags=["job-metrics"])
+app.include_router(ai_service.router, prefix="/ai", tags=["ai-service"])
+app.include_router(day_log.router, prefix="/day-logs", tags=["day-logs"])
 
 @app.get("/")
 def read_root():

@@ -4,12 +4,13 @@ from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime
 from app.core.database import get_session
-from app.models.job_metrics import JobMetrics, JobMetricsCreate, JobMetricsUpdate
+from app.models.job_metrics import JobMetrics
+from app.schemas.job_metrics import JobMetricsCreate, JobMetricsUpdate, JobMetricsResponse
 from app.models.user import User
 
 router = APIRouter()
 
-@router.post("/", response_model=JobMetrics, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=JobMetricsResponse, status_code=status.HTTP_201_CREATED)
 def create_job_metrics(job_metrics: JobMetricsCreate, session: Session = Depends(get_session)):
     """Create job metrics for a user."""
     # Verify user exists
@@ -41,7 +42,7 @@ def create_job_metrics(job_metrics: JobMetricsCreate, session: Session = Depends
     session.refresh(db_job_metrics)
     return db_job_metrics
 
-@router.get("/", response_model=List[JobMetrics])
+@router.get("/", response_model=List[JobMetricsResponse])
 def read_job_metrics(
     skip: int = 0, 
     limit: int = 100, 
@@ -56,7 +57,7 @@ def read_job_metrics(
     job_metrics = session.exec(statement).all()
     return job_metrics
 
-@router.get("/{metric_id}", response_model=JobMetrics)
+@router.get("/{metric_id}", response_model=JobMetricsResponse)
 def read_job_metric(metric_id: int, session: Session = Depends(get_session)):
     """Get a specific job metric by ID."""
     job_metric = session.get(JobMetrics, metric_id)
@@ -67,7 +68,7 @@ def read_job_metric(metric_id: int, session: Session = Depends(get_session)):
         )
     return job_metric
 
-@router.put("/{metric_id}", response_model=JobMetrics)
+@router.put("/{metric_id}", response_model=JobMetricsResponse)
 def update_job_metrics(metric_id: int, job_metrics_update: JobMetricsUpdate, session: Session = Depends(get_session)):
     """Update job metrics."""
     job_metrics = session.get(JobMetrics, metric_id)
@@ -106,7 +107,7 @@ def delete_job_metrics(metric_id: int, session: Session = Depends(get_session)):
     session.commit()
     return None
 
-@router.get("/user/{user_id}", response_model=JobMetrics)
+@router.get("/user/{user_id}", response_model=JobMetricsResponse)
 def get_user_job_metrics(user_id: str, session: Session = Depends(get_session)):
     """Get job metrics for a specific user."""
     # Verify user exists
@@ -129,7 +130,7 @@ def get_user_job_metrics(user_id: str, session: Session = Depends(get_session)):
     
     return job_metrics
 
-@router.patch("/user/{user_id}/financial", response_model=JobMetrics)
+@router.patch("/user/{user_id}/financial", response_model=JobMetricsResponse)
 def update_financial_metrics(
     user_id: str, 
     financial_data: dict,

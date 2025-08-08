@@ -12,9 +12,12 @@ from app.models.goal import Goal
 from app.schemas.goal import GoalCreate, GoalTypeEnum, StatusEnum, PriorityEnum
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
-from app.models.progress_log import ProgressLog, ProgressLogCreate
-from app.models.ai_context import AIContext, AIContextCreate
-from app.models.job_metrics import JobMetrics, JobMetricsCreate
+from app.models.progress_log import ProgressLog
+from app.schemas.progress_log import ProgressLogCreate
+from app.models.ai_context import AIContext
+from app.schemas.ai_context import AIContextCreate
+from app.models.job_metrics import JobMetrics
+from app.schemas.job_metrics import JobMetricsCreate
 
 
 @pytest.fixture(name="session")
@@ -247,6 +250,18 @@ def sample_job_metrics_create_data():
 
 
 @pytest.fixture
+def sample_day_log_create_data(test_user):
+    """Sample day log creation data."""
+    current_time = datetime.utcnow()
+    return {
+        "user_id": test_user.telegram_id,
+        "date": date.today().isoformat(),
+        "start_time": current_time.isoformat(),
+        "summary": "Test day log"
+    }
+
+
+@pytest.fixture
 def test_user(session: Session, sample_user_data):
     """Create a test user in the database."""
     user = User(**sample_user_data)
@@ -275,4 +290,6 @@ def test_task(session: Session, test_user, test_goal, sample_task_data):
     session.add(task)
     session.commit()
     session.refresh(task)
-    return task 
+    return task
+
+# Removed test_todo fixture (Todo module deprecated)

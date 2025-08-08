@@ -4,23 +4,23 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/diary
+      - DATABASE_URL=postgresql://postgres:postgres@db:5433/diary
       - PYTHONPATH=/app
-    # depends_on:
-    #   - db
+    depends_on:
+      - db
     volumes:
       - .:/app
 
-#   db:
-#     image: postgres:15
-#     volumes:
-#       - postgres_data:/var/lib/postgresql/data
-#     environment:
-#       - POSTGRES_USER=postgres
-#       - POSTGRES_PASSWORD=postgres
-#       - POSTGRES_DB=diary
-#     ports:
-#       - "5432:5432"
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=diary
+    ports:
+      - "5433:5432"
 
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:

@@ -1,0 +1,166 @@
+## Testing Guide
+
+This document explains how to write and run tests for the Diary application.
+
+### How to run tests
+
+- Run all tests:
+  ```bash
+  python -m pytest
+  ```
+- With verbose output and short tracebacks (defaults are in `pytest.ini`):
+  ```bash
+  python -m pytest -v --tb=short
+  ```
+- Run only unit or integration tests (uses markers from `pytest.ini`):
+  ```bash
+  python -m pytest -m unit
+  python -m pytest -m integration
+  ```
+- Run a specific file / class / test:
+  ```bash
+  python -m pytest tests/test_schemas.py
+  python -m pytest tests/test_system_end_to_end.py::TestEndToEndUserScenarios
+  python -m pytest tests/test_ai_service.py::TestAIService::test_generate_daily_tasks
+  ```
+- Via helper script with coverage:
+  ```bash
+  python run_tests.py --coverage
+  ```
+
+### Test layout
+
+- Tests live under `tests/` and follow pytest discovery:
+  - Files: `test_*.py`
+  - Classes: `Test*`
+  - Functions: `test_*`
+- Notable files:
+  - `tests/conftest.py`: shared fixtures (in‑memory DB `session`, FastAPI `client`, sample payloads, and model factories like `test_user`, `test_goal`, `test_task`).
+  - `tests/test_schemas.py`: examples of unit tests for Pydantic/SQLModel schemas.
+  - `tests/test_system_end_to_end.py`: end‑to‑end scenarios combining models, services, and AI mocks.
+
+### Markers and naming
+
+- Mark tests as unit or integration using `@pytest.mark.unit` or `@pytest.mark.integration`.
+- Naming is enforced by `pytest.ini`:
+  - `python_files = test_*.py`
+  - `python_classes = Test*`
+  - `python_functions = test_*`
+
+### Core fixtures (from `tests/conftest.py`)
+
+- `session`: SQLModel `Session` backed by in‑memory SQLite (isolated per test).
+- `client`: FastAPI `TestClient` with `get_session` dependency overridden to use the in‑memory `session`.
+- Sample data payloads: `sample_user_data`, `sample_goal_data`, `sample_task_data`, `sample_progress_log_data`, `sample_ai_context_data`, `sample_job_metrics_data`, `sample_day_log_create_data`, plus corresponding `*_create_data` variants for request bodies.
+- Seeded entities: `test_user`, `test_goal`, `test_task` (pre‑inserted and committed in the in‑memory DB).
+
+Usage example:
+```python
+def test_creates_goal_for_user(session, test_user, sample_goal_data):
+    from app.models.goal import Goal
+    goal = Goal(**sample_goal_data)
+    session.add(goal)
+    session.commit()
+    assert goal.goal_id is not None
+    assert goal.user_id == test_user.telegram_id
+```
+
+### Writing unit tests
+
+Focus on pure logic: schema validation, service helpers, and small functions. Example (schema validation):
+```python
+from datetime import datetime
+import pytest
+from app.schemas.task import TaskBase, TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
+
+def test_task_base_defaults():
+    now = datetime.utcnow()
+    task = TaskBase(
+        description="Test",
+        created_at=now,
+        updated_at=now,
+        priority=TaskPriorityEnum.HIGH,
+        completion_status=CompletionStatusEnum.PENDING,
+        energy_required=EnergyRequiredEnum.MEDIUM,
+    )
+    assert task.description == "Test"
+    assert task.started_at is None and task.completed_at is None
+```
+
+### Writing integration tests (API routes)
+
+Use the FastAPI `client` fixture to call endpoints with the in‑memory DB.
+```python
+from fastapi import status
+
+def test_create_and_read_day_log(client, test_user, sample_day_log_create_data):
+    # Create
+    resp = client.post("/api/v1/day_log/", json=sample_day_log_create_data)
+    assert resp.status_code == status.HTTP_201_CREATED
+    created = resp.json()
+
+    # Read
+    get_resp = client.get(f"/api/v1/day_log/{created['log_id']}")
+    assert get_resp.status_code == status.HTTP_200_OK
+    assert get_resp.json()["user_id"] == test_user.telegram_id
+```
+
+### Writing end‑to‑end (E2E) tests
+
+Combine models, services, and realistic flows. If async, mark with `@pytest.mark.asyncio`. Mock external AI calls to keep tests deterministic.
+```python
+import pytest
+from unittest.mock import Mock, patch
+from app.services.ai_service import AIService
+
+@pytest.mark.asyncio
+async def test_ai_daily_tasks_with_mock(session):
+    with patch.dict("os.environ", {"GEMINI_API_KEY": "test-api-key"}):
+        with patch("google.generativeai.configure"):
+            with patch("google.generativeai.GenerativeModel") as mock_model:
+                mock_instance = Mock()
+                mock_model.return_value = mock_instance
+                mock_instance.generate_content.return_value = Mock(text='''[
+                    {"description": "Task A", "estimated_duration": 60, "energy_required": "Low", "priority": "High"}
+                ]''')
+
+                ai_service = AIService()
+                ai_service.model = mock_instance
+                tasks = await ai_service.generate_daily_tasks(user=None, recent_progress=[], pending_goals=[], today_energy_level=5)
+                assert tasks and tasks[0]["description"] == "Task A"
+```
+
+### Mocking guidelines
+
+- Always mock external/networked dependencies (e.g., `google.generativeai`).
+- Set `GEMINI_API_KEY` via `patch.dict` and stub `google.generativeai.configure` and `GenerativeModel`.
+- Prefer `side_effect` lists when multiple sequential AI calls are expected in a single flow.
+
+### Database and sessions
+
+- Tests run against an in‑memory SQLite database; tables are created per test session via `SQLModel.metadata.create_all(engine)` in the `session` fixture.
+- Use `session.add(...)` + `session.commit()` and then `session.refresh(...)` as needed to persist and reload.
+- For API tests, `client` already injects the test `session` via FastAPI dependency overrides.
+
+### Coverage
+
+Generate terminal and HTML coverage reports:
+```bash
+python run_tests.py --coverage
+# HTML report is written to htmlcov/index.html
+```
+
+### Best practices
+
+- Keep tests deterministic and isolated; do not depend on real time, network, or external services.
+- Use Arrange‑Act‑Assert structure with clear, specific assertions.
+- Prefer fixtures for setup and sample payloads; avoid duplicated setup code.
+- Test both success and failure paths (e.g., 404/422 for missing/invalid input).
+
+### Troubleshooting
+
+- Ensure you run tests from the project root so imports like `app.*` resolve.
+- Install dependencies: `pip install -r requirements.txt`.
+- If imports fail, check `PYTHONPATH` or activate the project virtualenv.
+
+

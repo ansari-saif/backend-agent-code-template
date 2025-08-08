@@ -4,7 +4,8 @@ from typing import List, Optional
 import json
 from datetime import datetime
 from app.core.database import get_session
-from app.models.ai_context import AIContext, AIContextCreate, AIContextUpdate
+from app.models.ai_context import AIContext
+from app.schemas.ai_context import AIContextCreate, AIContextUpdate, AIContextResponse
 from app.models.user import User
 from pydantic import BaseModel
 
@@ -13,7 +14,7 @@ router = APIRouter()
 class InsightsUpdate(BaseModel):
     insights: str
 
-@router.post("/", response_model=AIContext, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=AIContextResponse, status_code=status.HTTP_201_CREATED)
 def create_ai_context(ai_context: AIContextCreate, session: Session = Depends(get_session)):
     """Create AI context for a user."""
     # Verify user exists
@@ -51,7 +52,7 @@ def create_ai_context(ai_context: AIContextCreate, session: Session = Depends(ge
     session.refresh(db_ai_context)
     return db_ai_context
 
-@router.get("/", response_model=List[AIContext])
+@router.get("/", response_model=List[AIContextResponse])
 def read_ai_contexts(
     skip: int = 0, 
     limit: int = 100, 
@@ -66,7 +67,7 @@ def read_ai_contexts(
     ai_contexts = session.exec(statement).all()
     return ai_contexts
 
-@router.get("/{context_id}", response_model=AIContext)
+@router.get("/{context_id}", response_model=AIContextResponse)
 def read_ai_context(context_id: int, session: Session = Depends(get_session)):
     """Get a specific AI context by ID."""
     ai_context = session.get(AIContext, context_id)
@@ -77,7 +78,7 @@ def read_ai_context(context_id: int, session: Session = Depends(get_session)):
         )
     return ai_context
 
-@router.put("/{context_id}", response_model=AIContext)
+@router.put("/{context_id}", response_model=AIContextResponse)
 def update_ai_context(context_id: int, ai_context_update: AIContextUpdate, session: Session = Depends(get_session)):
     """Update an AI context."""
     ai_context = session.get(AIContext, context_id)
@@ -121,7 +122,7 @@ def delete_ai_context(context_id: int, session: Session = Depends(get_session)):
     session.commit()
     return None
 
-@router.get("/user/{user_id}", response_model=AIContext)
+@router.get("/user/{user_id}", response_model=AIContextResponse)
 def get_user_ai_context(user_id: str, session: Session = Depends(get_session)):
     """Get AI context for a specific user."""
     # Verify user exists
@@ -144,7 +145,7 @@ def get_user_ai_context(user_id: str, session: Session = Depends(get_session)):
     
     return ai_context
 
-@router.patch("/user/{user_id}/patterns", response_model=AIContext)
+@router.patch("/user/{user_id}/patterns", response_model=AIContextResponse)
 def update_behavior_patterns(user_id: str, patterns: dict, session: Session = Depends(get_session)):
     """Update behavior patterns for a user's AI context."""
     # Verify user exists
@@ -177,7 +178,7 @@ def update_behavior_patterns(user_id: str, patterns: dict, session: Session = De
     session.refresh(ai_context)
     return ai_context
 
-@router.patch("/user/{user_id}/insights", response_model=AIContext)
+@router.patch("/user/{user_id}/insights", response_model=AIContextResponse)
 def update_productivity_insights(
     user_id: str,
     insights_update: InsightsUpdate,

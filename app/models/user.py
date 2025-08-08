@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
 from datetime import date, time
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, Enum as SAEnum
 from app.schemas.user import TimezoneEnum, PhaseEnum, EnergyProfileEnum
 
 if TYPE_CHECKING:
@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from app.models.progress_log import ProgressLog
     from app.models.ai_context import AIContext
     from app.models.job_metrics import JobMetrics
+    from app.models.day_log import DayLog
+    # from app.models.todo import Todo
 
 
 class User(SQLModel, table=True):
@@ -25,7 +27,7 @@ class User(SQLModel, table=True):
     )
     current_phase: PhaseEnum = Field(
         default=PhaseEnum.RESEARCH,
-        sa_column=Column(String, nullable=False)
+        sa_column=Column(SAEnum(PhaseEnum, name="phaseenum_user", create_type=False), nullable=False)
     )
     quit_job_target: Optional[date] = None
     onboarding_complete: bool = Field(default=False)
@@ -40,4 +42,6 @@ class User(SQLModel, table=True):
     tasks: List["Task"] = Relationship(back_populates="user")
     progress_logs: List["ProgressLog"] = Relationship(back_populates="user")
     ai_context: Optional["AIContext"] = Relationship(back_populates="user")
-    job_metrics: Optional["JobMetrics"] = Relationship(back_populates="user") 
+    job_metrics: Optional["JobMetrics"] = Relationship(back_populates="user")
+    day_logs: List["DayLog"] = Relationship(back_populates="user")
+    # todos relationship removed (Todo module deprecated)

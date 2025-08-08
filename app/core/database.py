@@ -11,6 +11,7 @@ from app.models.task import Task
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
+from app.models.day_log import DayLog
 
 # Use SQLite for development, PostgreSQL for production
 database_url = settings.DATABASE_URL

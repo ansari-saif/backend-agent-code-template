@@ -3,12 +3,17 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 from app.core.database import get_session
-from app.models.progress_log import ProgressLog, ProgressLogCreate, ProgressLogUpdate
+from app.models.progress_log import ProgressLog
+from app.schemas.progress_log import (
+    ProgressLogCreate,
+    ProgressLogUpdate,
+    ProgressLogResponse,
+)
 from app.models.user import User
 
 router = APIRouter()
 
-@router.post("/", response_model=ProgressLog, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ProgressLogResponse, status_code=status.HTTP_201_CREATED)
 def create_progress_log(progress_log: ProgressLogCreate, session: Session = Depends(get_session)):
     """Create a new progress log entry."""
     # Verify user exists
@@ -39,7 +44,7 @@ def create_progress_log(progress_log: ProgressLogCreate, session: Session = Depe
     session.refresh(db_progress_log)
     return db_progress_log
 
-@router.get("/", response_model=List[ProgressLog])
+@router.get("/", response_model=List[ProgressLogResponse])
 def read_progress_logs(
     skip: int = 0, 
     limit: int = 100, 
@@ -62,7 +67,7 @@ def read_progress_logs(
     progress_logs = session.exec(statement).all()
     return progress_logs
 
-@router.get("/{log_id}", response_model=ProgressLog)
+@router.get("/{log_id}", response_model=ProgressLogResponse)
 def read_progress_log(log_id: int, session: Session = Depends(get_session)):
     """Get a specific progress log by ID."""
     progress_log = session.get(ProgressLog, log_id)
@@ -73,7 +78,7 @@ def read_progress_log(log_id: int, session: Session = Depends(get_session)):
         )
     return progress_log
 
-@router.put("/{log_id}", response_model=ProgressLog)
+@router.put("/{log_id}", response_model=ProgressLogResponse)
 def update_progress_log(log_id: int, progress_log_update: ProgressLogUpdate, session: Session = Depends(get_session)):
     """Update a progress log."""
     progress_log = session.get(ProgressLog, log_id)
@@ -106,7 +111,7 @@ def delete_progress_log(log_id: int, session: Session = Depends(get_session)):
     session.commit()
     return None
 
-@router.get("/user/{user_id}", response_model=List[ProgressLog])
+@router.get("/user/{user_id}", response_model=List[ProgressLogResponse])
 def get_user_progress_logs(user_id: str, session: Session = Depends(get_session)):
     """Get all progress logs for a specific user."""
     # Verify user exists
@@ -123,7 +128,7 @@ def get_user_progress_logs(user_id: str, session: Session = Depends(get_session)
     progress_logs = session.exec(statement).all()
     return progress_logs
 
-@router.get("/user/{user_id}/recent", response_model=List[ProgressLog])
+@router.get("/user/{user_id}/recent", response_model=List[ProgressLogResponse])
 def get_user_recent_progress_logs(user_id: str, days: int = 7, session: Session = Depends(get_session)):
     """Get recent progress logs for a specific user."""
     # Verify user exists

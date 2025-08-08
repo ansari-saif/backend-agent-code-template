@@ -49,7 +49,7 @@ def main():
     args = parser.parse_args()
     
     # Base pytest command
-    cmd = ["python", "-m", "pytest"]
+    cmd = [sys.executable, "-m", "pytest"]
     
     # Add verbose flag if requested
     if args.verbose:

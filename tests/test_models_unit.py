@@ -2,12 +2,18 @@ import pytest
 from datetime import date, datetime, time
 from decimal import Decimal
 from sqlmodel import Session
-from app.models.user import User, UserCreate, TimezoneEnum, PhaseEnum, EnergyProfileEnum
-from app.models.goal import Goal, GoalCreate, GoalTypeEnum, StatusEnum, PriorityEnum
-from app.models.task import Task, TaskCreate, TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
-from app.models.progress_log import ProgressLog, ProgressLogCreate
-from app.models.ai_context import AIContext, AIContextCreate
-from app.models.job_metrics import JobMetrics, JobMetricsCreate
+from app.models.user import User
+from app.schemas.user import UserCreate, TimezoneEnum, PhaseEnum, EnergyProfileEnum
+from app.models.goal import Goal
+from app.schemas.goal import GoalCreate, GoalTypeEnum, StatusEnum, PriorityEnum
+from app.models.task import Task
+from app.schemas.task import TaskCreate, TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
+from app.models.progress_log import ProgressLog
+from app.schemas.progress_log import ProgressLogCreate
+from app.models.ai_context import AIContext
+from app.schemas.ai_context import AIContextCreate
+from app.models.job_metrics import JobMetrics
+from app.schemas.job_metrics import JobMetricsCreate
 
 
 class TestUserModel:
@@ -66,7 +72,7 @@ class TestUserModel:
 
     def test_user_update_model(self):
         """Test UserUpdate model has optional fields."""
-        from app.models.user import UserUpdate
+        from app.schemas.user import UserUpdate
         
         update_data = UserUpdate(name="New Name", current_phase=PhaseEnum.GROWTH)
         assert update_data.name == "New Name"
@@ -361,4 +367,4 @@ class TestJobMetricsModel:
         session.refresh(test_user)
 
         assert job_metrics.user_id == test_user.telegram_id
-        assert test_user.job_metrics == job_metrics 
+        assert test_user.job_metrics == job_metrics

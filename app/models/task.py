@@ -32,7 +32,11 @@ class Task(SQLModel, table=True):
         default=EnergyRequiredEnum.MEDIUM,
         sa_column=Column(Enum(EnergyRequiredEnum, name='energyrequiredenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     
     # Relationships
     user: Optional["User"] = Relationship(back_populates="tasks")
-    goal: Optional["Goal"] = Relationship(back_populates="tasks") 
+    goal: Optional["Goal"] = Relationship(back_populates="tasks")
