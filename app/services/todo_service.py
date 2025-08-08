@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from sqlmodel import Session, select
 from app.models.todo import Todo, TodoCreate, TodoUpdate
+from datetime import datetime
 
 def create_todo_service(todo_data: TodoCreate, session: Session):
     todo = Todo.from_orm(todo_data)
@@ -22,6 +23,8 @@ def update_todo_service(todo_id: int, todo_data: TodoUpdate, session: Session):
         raise HTTPException(status_code=404, detail="Todo not found")
     for key, value in todo_data.dict(exclude_unset=True).items():
         setattr(todo, key, value)
+    # Update the updated_at timestamp
+    todo.updated_at = datetime.now()
     session.add(todo)
     session.commit()
     session.refresh(todo)

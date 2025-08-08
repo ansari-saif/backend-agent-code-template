@@ -16,6 +16,10 @@ class TestTodoIntegration:
         assert data["description"] == sample_todo_create_data["description"]
         assert data["is_completed"] is False
         assert "id" in data
+        assert "created_at" in data
+        assert "updated_at" in data
+        assert data["created_at"] is not None
+        assert data["updated_at"] is not None
 
     def test_create_todo_missing_title(self, client: TestClient):
         """Test todo creation with missing title."""
@@ -36,6 +40,10 @@ class TestTodoIntegration:
         data = response.json()
         assert data["id"] == todo_id
         assert data["title"] == sample_todo_create_data["title"]
+        assert "created_at" in data
+        assert "updated_at" in data
+        assert data["created_at"] is not None
+        assert data["updated_at"] is not None
 
     def test_get_todo_not_found(self, client: TestClient):
         """Test retrieving non-existent todo."""
@@ -62,6 +70,10 @@ class TestTodoIntegration:
         assert data["title"] == "Updated Todo"
         assert data["is_completed"] is True
         assert data["description"] == sample_todo_create_data["description"]  # Should remain unchanged
+        assert "created_at" in data
+        assert "updated_at" in data
+        assert data["created_at"] is not None
+        assert data["updated_at"] is not None
 
     def test_update_todo_partial(self, client: TestClient, sample_todo_create_data):
         """Test partial todo update."""
@@ -133,6 +145,12 @@ class TestTodoIntegration:
         assert len(data) == 2
         assert any(todo["title"] == "Todo 1" for todo in data)
         assert any(todo["title"] == "Todo 2" for todo in data)
+        # Verify timestamps are included in list response
+        for todo in data:
+            assert "created_at" in todo
+            assert "updated_at" in todo
+            assert todo["created_at"] is not None
+            assert todo["updated_at"] is not None
 
     def test_todo_workflow_complete(self, client: TestClient):
         """Test complete todo workflow: create -> read -> update -> delete."""
