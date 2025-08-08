@@ -1,8 +1,9 @@
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
 from datetime import date, time
 from sqlalchemy import Column, String, Enum as SAEnum
 from app.schemas.user import TimezoneEnum, PhaseEnum, EnergyProfileEnum
+from app.models import TimestampModel
 
 if TYPE_CHECKING:
     from app.models.goal import Goal
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     # from app.models.todo import Todo
 
 
-class User(SQLModel, table=True):
+class User(TimestampModel, table=True):
     __tablename__ = "users"
     
     # Core fields

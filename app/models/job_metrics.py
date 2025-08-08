@@ -1,10 +1,14 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional
+from sqlmodel import Field, Relationship, SQLModel
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 from decimal import Decimal
+from app.models import TimestampModel
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
-class JobMetricsBase(SQLModel):
+class JobMetricsBase(TimestampModel):
     user_id: str = Field(foreign_key="users.telegram_id")
     current_salary: Optional[Decimal] = None
     startup_revenue: Optional[Decimal] = None

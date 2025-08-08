@@ -1,9 +1,13 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional
+from sqlmodel import Field, Relationship
+from typing import Optional, TYPE_CHECKING
 from datetime import date
+from app.models import TimestampModel
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
-class ProgressLog(SQLModel, table=True):
+class ProgressLog(TimestampModel, table=True):
     __tablename__ = "progress_logs"
     
     log_id: Optional[int] = Field(default=None, primary_key=True)

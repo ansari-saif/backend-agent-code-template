@@ -1,9 +1,13 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional
+from sqlmodel import Field, Relationship, SQLModel
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+from app.models import TimestampModel
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
-class AIContextBase(SQLModel):
+class AIContextBase(TimestampModel):
     user_id: str = Field(foreign_key="users.telegram_id")
     behavior_patterns: Optional[str] = None  # JSON string
     productivity_insights: Optional[str] = None

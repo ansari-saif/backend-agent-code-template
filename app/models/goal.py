@@ -1,10 +1,15 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List
+from sqlmodel import Field, Relationship
+from typing import Optional, List, TYPE_CHECKING
 from datetime import date
 from app.schemas.goal import GoalTypeEnum, StatusEnum, PhaseEnum, PriorityEnum
+from app.models import TimestampModel
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.task import Task
 
 
-class Goal(SQLModel, table=True):
+class Goal(TimestampModel, table=True):
     __tablename__ = "goals"
     
     goal_id: Optional[int] = Field(default=None, primary_key=True)
