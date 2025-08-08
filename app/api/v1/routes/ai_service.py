@@ -49,6 +49,9 @@ class PhaseTransitionRequest(BaseModel):
 class CareerTransitionRequest(BaseModel):
     user_id: str
 
+class GoalsAnalysisRequest(BaseModel):
+    user_id: str
+
 # Initialize AI service (may raise if GEMINI_API_KEY missing during tests; we'll catch in endpoint)
 try:
     ai_service = AIService()
@@ -297,6 +300,45 @@ async def evaluate_phase_transition(request: PhaseTransitionRequest, session: Se
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to evaluate phase transition: {str(e)}"
+        )
+
+@router.post("/analyze-goals", response_model=Dict[str, Any])
+async def analyze_goals(request: GoalsAnalysisRequest, session: Session = Depends(get_session)):
+    """Analyze goals progress and provide strategic insights."""
+    # Verify user exists
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    try:
+        # Get goals
+        goals = session.exec(
+            select(Goal).where(Goal.user_id == request.user_id)
+        ).all()
+        
+        # Get progress logs for trend analysis
+        progress_logs = session.exec(
+            select(ProgressLog).where(
+                ProgressLog.user_id == request.user_id,
+                ProgressLog.date >= date.today() - timedelta(days=14)  # Last 2 weeks
+            ).order_by(ProgressLog.date.desc())
+        ).all()
+        
+        # Generate goals analysis using AI
+        analysis = await ai_service.analyze_goals(
+            goals=goals,
+            progress_logs=progress_logs
+        )
+        
+        return analysis
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze goals: {str(e)}"
         )
 
 @router.post("/career-transition", response_model=Dict[str, Any])

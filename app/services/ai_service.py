@@ -527,7 +527,7 @@ class AIService:
                 return {
                     "overall_status": "Average",
                     "completion_assessment": "On Track",
-                    "key_insights": ["No goals have been defined", "Start setting goals to track progress"],
+                    "key_insights": ["No goals", "Progress tracking requires goals"],
                     "success_patterns": ["Consistent tracking", "Regular planning"],
                     "challenges": ["Need more progress data"],
                     "recommendations": ["Start setting goals", "Begin tracking daily progress"],
