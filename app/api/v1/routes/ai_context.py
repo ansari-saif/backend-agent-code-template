@@ -10,12 +10,12 @@ router = APIRouter()
 
 
 @router.post("/", response_model=AIContextResponse, status_code=status.HTTP_201_CREATED)
-def create_ai_context(
+async def create_ai_context(
     ai_context_data: AIContextCreate,
     session: Session = Depends(get_session),
 ) -> AIContext:
     try:
-        return ai_context_service.create_ai_context(session, ai_context_data)
+        return await ai_context_service.create_ai_context(session, ai_context_data)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
