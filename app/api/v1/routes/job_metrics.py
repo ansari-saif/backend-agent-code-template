@@ -7,6 +7,7 @@ from app.core.database import get_session
 from app.models.job_metrics import JobMetrics
 from app.schemas.job_metrics import JobMetricsCreate, JobMetricsUpdate, JobMetricsResponse
 from app.models.user import User
+from app.services.job_metrics_service import analyze_job_metrics_with_ai, AIServiceError
 
 router = APIRouter()
 
@@ -228,6 +229,25 @@ def get_financial_analysis(user_id: str, session: Session = Depends(get_session)
             analysis["recommendations"].append("Low job satisfaction - factor in quality of life improvements")
     
     return analysis
+
+@router.post("/{metric_id}/analyze", response_model=JobMetricsResponse)
+async def analyze_metrics_with_ai(metric_id: int, session: Session = Depends(get_session)):
+    """
+    Analyze job metrics using AI to provide comprehensive insights and recommendations.
+    """
+    try:
+        job_metrics = await analyze_job_metrics_with_ai(session, metric_id)
+        return job_metrics
+    except LookupError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error analyzing job metrics: {str(e)}"
+        )
 
 def _calculate_quit_readiness_score(job_metrics: JobMetrics) -> float:
     """Calculate a quit readiness score based on financial and personal metrics."""
