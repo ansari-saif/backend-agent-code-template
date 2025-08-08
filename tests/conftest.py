@@ -1,4 +1,6 @@
 import pytest
+pytest_plugins = ("pytest_asyncio",)
+pytestmark = pytest.mark.asyncio
 from datetime import datetime
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine

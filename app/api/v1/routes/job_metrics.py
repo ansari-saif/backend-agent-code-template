@@ -11,7 +11,6 @@ from app.services.job_metrics_service import analyze_job_metrics_with_ai, AIServ
 from app.services.ai_service import AIService
 
 router = APIRouter()
-ai_service = AIService()
 
 @router.post("/", response_model=JobMetricsResponse, status_code=status.HTTP_201_CREATED)
 def create_job_metrics(job_metrics: JobMetricsCreate, session: Session = Depends(get_session)):
@@ -147,7 +146,8 @@ async def generate_job_metrics_for_user(user_id: str, session: Session = Depends
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Job metrics already exist for this user")
 
-    data = await ai_service.generate_job_metrics_for_user(session=session, user_id=user_id)
+    service = AIService()
+    data = await service.generate_job_metrics_for_user(session=session, user_id=user_id)
 
     # Required fields: stress_level, job_satisfaction
     stress_level = int(data.get("stress_level", 5))

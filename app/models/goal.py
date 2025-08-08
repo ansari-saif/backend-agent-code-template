@@ -14,7 +14,7 @@ class Goal(TimestampModel, table=True):
     
     goal_id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(foreign_key="users.telegram_id")
-    type: GoalTypeEnum
+    type: GoalTypeEnum = GoalTypeEnum.MONTHLY
     description: str
     deadline: Optional[date] = None
     status: StatusEnum = StatusEnum.ACTIVE

@@ -1,6 +1,6 @@
 from sqlmodel import Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from datetime import date
+from datetime import date as dt_date
 from app.models import TimestampModel
 
 if TYPE_CHECKING:
@@ -12,7 +12,7 @@ class ProgressLog(TimestampModel, table=True):
     
     log_id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(foreign_key="users.telegram_id")
-    date: date
+    date: dt_date = Field(default_factory=dt_date.today)
     tasks_completed: int = 0
     tasks_planned: int = 0
     mood_score: int = Field(ge=1, le=10)

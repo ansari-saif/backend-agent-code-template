@@ -42,13 +42,13 @@ def read_root():
         "version": "1.0.0",
         "docs": "/docs",
         "features": [
-            # "User management",
-            # "Goal tracking",
+            "User management",
+            "Goal tracking",
             "Task management",
-            # "Progress logging",
-            # "AI context learning",
-            # "Job metrics tracking",
-            # "6 AI agents for productivity optimization"
+            "Progress logging",
+            "AI context learning",
+            "Job metrics tracking",
+            "6 AI agents for productivity optimization"
         ]
     }
 

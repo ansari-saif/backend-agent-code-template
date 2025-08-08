@@ -15,7 +15,7 @@ ai_service = AIService()
 
 
 @router.post("/", response_model=DayLogResponse, status_code=status.HTTP_201_CREATED)
-def create_day_log(
+def create_day_log_endpoint(
     day_log: DayLogCreate,
     session: Session = Depends(get_session)
 ):
@@ -204,7 +204,7 @@ def get_user_day_log_stats(
 
 
 @router.patch("/{log_id}", response_model=DayLogResponse)
-def update_day_log(
+def update_day_log_endpoint(
     log_id: int,
     day_log_update: DayLogUpdate,
     session: Session = Depends(get_session)
@@ -238,7 +238,7 @@ def update_day_log(
 
 
 @router.delete("/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_day_log(
+def delete_day_log_endpoint(
     log_id: int,
     session: Session = Depends(get_session)
 ):

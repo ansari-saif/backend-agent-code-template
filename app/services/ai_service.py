@@ -13,7 +13,7 @@ from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
 from app.models.day_log import DayLog
 from app.models.log import Log
-from sqlmodel import Session
+from sqlmodel import Session, select
 from typing import Optional
 
 
@@ -254,6 +254,15 @@ class AIService:
                 json_text = response_text
             
             analysis = json.loads(json_text)
+            # Normalize completion_assessment to expected labels
+            if isinstance(analysis, dict) and "completion_assessment" in analysis:
+                raw = str(analysis.get("completion_assessment", "")).lower()
+                if "ahead" in raw:
+                    analysis["completion_assessment"] = "Ahead"
+                elif "on track" in raw or "ontrack" in raw:
+                    analysis["completion_assessment"] = "On Track"
+                elif "behind" in raw:
+                    analysis["completion_assessment"] = "Behind"
             return analysis
             
         except Exception as e:
@@ -485,7 +494,7 @@ class AIService:
             Provide analysis in JSON format:
             {{
                 "overall_status": "Excellent/Good/Average/Needs Attention",
-                "completion_assessment": "Ahead/On Track/Behind Schedule",
+                "completion_assessment": "Ahead/On Track/Behind",
                 "key_insights": ["insight1", "insight2", "insight3"],
                 "success_patterns": ["pattern1", "pattern2"],
                 "challenges": ["challenge1", "challenge2"],
@@ -542,7 +551,7 @@ class AIService:
 
             # Calculate status based on completion rate and active goals
             status = "Good" if completion_rate >= 50 or (in_progress_goals > 0 and avg_completion_percentage >= 60) else "Average" if completion_rate >= 30 or in_progress_goals > 0 else "Needs Attention"
-            assessment = "Ahead" if completion_rate >= 80 else "On Track" if completion_rate >= 50 or (in_progress_goals > 0 and avg_completion_percentage >= 50) else "Behind Schedule"
+            assessment = "Ahead" if completion_rate >= 80 else "On Track" if completion_rate >= 50 or (in_progress_goals > 0 and avg_completion_percentage >= 50) else "Behind"
             
             return {
                 "overall_status": status,
@@ -573,7 +582,7 @@ class AIService:
     async def generate_progress_log_content(
         self,
         session: Session,
-        user_id: int,
+        user_id: str,
         date: Optional[date] = None
     ) -> Dict[str, Any]:
         """
@@ -583,51 +592,61 @@ class AIService:
         try:
             # Use today's date if not specified
             target_date = date or datetime.utcnow().date()
-            
+
+            # Day boundaries
+            day_start = datetime.combine(target_date, datetime.min.time())
+            next_day_start = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
+
             # Fetch relevant data for the day
-            day_log = session.query(DayLog).filter(
-                DayLog.user_id == user_id,
-                DayLog.date == target_date
+            day_log = session.exec(
+                select(DayLog).where(DayLog.user_id == user_id, DayLog.date == target_date)
             ).first()
-            
+
             # Get tasks completed or worked on today
-            tasks = session.query(Task).filter(
-                Task.user_id == user_id,
-                Task.updated_at >= datetime.combine(target_date, datetime.min.time()),
-                Task.updated_at < datetime.combine(target_date + timedelta(days=1), datetime.min.time())
+            tasks = session.exec(
+                select(Task).where(
+                    Task.user_id == user_id,
+                    Task.updated_at >= day_start,
+                    Task.updated_at < next_day_start,
+                )
             ).all()
-            
-            # Get any logs for the day
-            logs = session.query(Log).filter(
-                Log.user_id == user_id,
-                Log.created_at >= datetime.combine(target_date, datetime.min.time()),
-                Log.created_at < datetime.combine(target_date + timedelta(days=1), datetime.min.time())
-            ).all()
-            
+
+            # There is no user association on Log; omit logs from context
+            logs: List[Log] = []
+
             # Get latest job metrics
-            job_metrics = session.query(JobMetrics).filter(
-                JobMetrics.user_id == user_id
-            ).order_by(JobMetrics.created_at.desc()).first()
-            
+            job_metrics = session.exec(
+                select(JobMetrics)
+                .where(JobMetrics.user_id == user_id)
+                .order_by(JobMetrics.created_at.desc())
+            ).first()
+
+            # Progress log for mood/energy on the target date
+            progress_entry = session.exec(
+                select(ProgressLog).where(
+                    ProgressLog.user_id == user_id, ProgressLog.date == target_date
+                )
+            ).first()
+
             # Prepare context for AI
             completed_tasks = [t for t in tasks if t.completion_status == CompletionStatusEnum.COMPLETED]
             in_progress_tasks = [t for t in tasks if t.completion_status == CompletionStatusEnum.IN_PROGRESS]
-            
+
             context = {
                 "day_summary": {
-                    "mood": day_log.mood if day_log else "Unknown",
-                    "energy_level": day_log.energy_level if day_log else 5,
-                    "sleep_quality": day_log.sleep_quality if day_log else "Unknown"
+                    "mood": (progress_entry.mood_score if progress_entry else None),
+                    "energy_level": (progress_entry.energy_level if progress_entry else None),
+                    "sleep_quality": None,
                 },
                 "tasks": {
                     "completed": [t.description for t in completed_tasks],
-                    "in_progress": [t.description for t in in_progress_tasks]
+                    "in_progress": [t.description for t in in_progress_tasks],
                 },
-                "logs": [log.content for log in logs],
+                "logs": [],
                 "metrics": {
-                    "productivity": job_metrics.productivity_score if job_metrics else None,
-                    "stress_level": job_metrics.stress_level if job_metrics else None
-                }
+                    "productivity": None,
+                    "stress_level": (job_metrics.stress_level if job_metrics else None),
+                },
             }
             
             prompt = f"""
@@ -695,17 +714,19 @@ class AIService:
             day_date = target_date or datetime.utcnow().date()
 
             # Gather context for the day
-            tasks = session.query(Task).filter(
-                Task.user_id == user_id,
-                Task.updated_at >= datetime.combine(day_date, datetime.min.time()),
-                Task.updated_at < datetime.combine(day_date + timedelta(days=1), datetime.min.time())
+            start = datetime.combine(day_date, datetime.min.time())
+            end = datetime.combine(day_date + timedelta(days=1), datetime.min.time())
+
+            tasks = session.exec(
+                select(Task).where(
+                    Task.user_id == user_id,
+                    Task.updated_at >= start,
+                    Task.updated_at < end,
+                )
             ).all()
 
-            notes = session.query(Log).filter(
-                Log.user_id == user_id,
-                Log.created_at >= datetime.combine(day_date, datetime.min.time()),
-                Log.created_at < datetime.combine(day_date + timedelta(days=1), datetime.min.time())
-            ).all()
+            # No user association on Log; omit notes
+            notes: List[Log] = []
 
             completed = [t.description for t in tasks if getattr(t, "completion_status", None) == CompletionStatusEnum.COMPLETED]
             in_progress = [t.description for t in tasks if getattr(t, "completion_status", None) == CompletionStatusEnum.IN_PROGRESS]
@@ -716,7 +737,7 @@ class AIService:
                     "completed": completed,
                     "in_progress": in_progress,
                 },
-                "notes": [getattr(n, "content", "") for n in notes],
+                "notes": [],
             }
 
             prompt = f"""
@@ -774,11 +795,18 @@ class AIService:
             start = datetime.combine(today - timedelta(days=7), datetime.min.time())
             end = datetime.combine(today + timedelta(days=1), datetime.min.time())
 
-            recent_tasks = session.query(Task).filter(Task.user_id == user_id, Task.updated_at >= start, Task.updated_at < end).all()
+            recent_tasks = session.exec(
+                select(Task).where(
+                    Task.user_id == user_id,
+                    Task.updated_at >= start,
+                    Task.updated_at < end,
+                )
+            ).all()
             completed = len([t for t in recent_tasks if getattr(t, "completion_status", None) == CompletionStatusEnum.COMPLETED])
             total = len(recent_tasks)
 
-            notes_count = session.query(Log).filter(Log.user_id == user_id, Log.created_at >= start, Log.created_at < end).count()
+            # No user association on Log; set to 0
+            notes_count = 0
 
             context = {
                 "recent_tasks_total": total,

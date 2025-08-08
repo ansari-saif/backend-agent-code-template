@@ -52,19 +52,14 @@ class CareerTransitionRequest(BaseModel):
 class GoalsAnalysisRequest(BaseModel):
     user_id: str
 
-# Initialize AI service (may raise if GEMINI_API_KEY missing during tests; we'll catch in endpoint)
-try:
-    ai_service = AIService()
-except Exception:
-    ai_service = None
+# Lazy creation in endpoints to avoid module import failures when GEMINI_API_KEY is missing
+ai_service = None
 def _normalize_tasks(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     normalized: List[Dict[str, Any]] = []
     for t in tasks:
         task = dict(t)
         priority = str(task.get("priority", "")).strip()
-        if priority.lower() == "urgent":
-            task["priority"] = "High"
-        elif priority not in {"Low", "Medium", "High"} and priority:
+        if priority not in {"Low", "Medium", "High"} and priority:
             # Default unknown priorities to Medium
             task["priority"] = "Medium"
         # Ensure estimated_duration is an int if present
@@ -88,9 +83,8 @@ async def generate_daily_tasks_endpoint(request: DailyTasksRequest, session: Ses
     progress_logs = session.exec(select(ProgressLog).where(ProgressLog.user_id == request.user_id).order_by(ProgressLog.date.desc()).limit(7)).all()
 
     try:
-        if ai_service is None:
-            raise RuntimeError("AI service not initialized")
-        tasks = await ai_service.generate_daily_tasks(
+        service = AIService()
+        tasks = await service.generate_daily_tasks(
             user=user,
             recent_progress=progress_logs,
             pending_goals=goals,
@@ -152,7 +146,8 @@ async def generate_motivation(request: MotivationRequest, session: Session = Dep
         ).all()
         
         # Generate motivation message using AI
-        motivation = await ai_service.generate_motivation_message(
+        service = AIService()
+        motivation = await service.generate_motivation_message(
             user=user,
             ai_context=ai_context,
             current_challenge=request.current_challenge,
@@ -204,7 +199,8 @@ async def generate_deadline_reminder(request: DeadlineReminderRequest, session: 
         stress_level = recent_progress.mood_score if recent_progress else 5
         
         # Generate deadline reminder using AI
-        reminder = await ai_service.generate_deadline_reminder(
+        service = AIService()
+        reminder = await service.generate_deadline_reminder(
             task=task,
             time_remaining=time_remaining,
             user_pattern=request.user_pattern,
@@ -252,7 +248,8 @@ async def generate_weekly_analysis(request: WeeklyAnalysisRequest, session: Sess
         ).all()
         
         # Generate weekly analysis using AI
-        analysis = await ai_service.generate_weekly_analysis(
+        service = AIService()
+        analysis = await service.generate_weekly_analysis(
             progress_logs=progress_logs,
             goals=goals,
             tasks=tasks
@@ -288,7 +285,8 @@ async def evaluate_phase_transition(request: PhaseTransitionRequest, session: Se
         time_in_phase_days = 30  # Default placeholder
         
         # Generate phase transition evaluation using AI
-        evaluation = await ai_service.evaluate_phase_transition(
+        service = AIService()
+        evaluation = await service.evaluate_phase_transition(
             user=user,
             goals=goals,
             time_in_phase_days=time_in_phase_days
@@ -328,7 +326,8 @@ async def analyze_goals(request: GoalsAnalysisRequest, session: Session = Depend
         ).all()
         
         # Generate goals analysis using AI
-        analysis = await ai_service.analyze_goals(
+        service = AIService()
+        analysis = await service.analyze_goals(
             goals=goals,
             progress_logs=progress_logs
         )
@@ -365,7 +364,8 @@ async def analyze_career_transition(request: CareerTransitionRequest, session: S
             )
         
         # Generate career transition analysis using AI
-        analysis = await ai_service.analyze_career_transition_readiness(
+        service = AIService()
+        analysis = await service.analyze_career_transition_readiness(
             user=user,
             job_metrics=job_metrics
         )
@@ -424,7 +424,8 @@ async def generate_complete_user_analysis(user_id: str, session: Session = Depen
         
         # Add individual agent outputs if data is available
         if recent_progress and goals:
-            daily_tasks = await ai_service.generate_daily_tasks(
+            service = AIService()
+            daily_tasks = await service.generate_daily_tasks(
                 user=user,
                 recent_progress=recent_progress,
                 pending_goals=[g for g in goals if g.status == StatusEnum.ACTIVE],
@@ -433,7 +434,8 @@ async def generate_complete_user_analysis(user_id: str, session: Session = Depen
             analysis["recommended_daily_tasks"] = daily_tasks
         
         if ai_context:
-            motivation = await ai_service.generate_motivation_message(
+            service = AIService()
+            motivation = await service.generate_motivation_message(
                 user=user,
                 ai_context=ai_context,
                 current_challenge="Daily productivity optimization",
@@ -443,14 +445,16 @@ async def generate_complete_user_analysis(user_id: str, session: Session = Depen
             analysis["motivation_message"] = motivation
         
         if recent_progress and goals and tasks:
-            weekly_analysis = await ai_service.generate_weekly_analysis(
+            service = AIService()
+            weekly_analysis = await service.generate_weekly_analysis(
                 progress_logs=recent_progress,
                 goals=goals,
                 tasks=tasks
             )
             analysis["weekly_insights"] = weekly_analysis
         
-        phase_evaluation = await ai_service.evaluate_phase_transition(
+        service = AIService()
+        phase_evaluation = await service.evaluate_phase_transition(
             user=user,
             goals=goals,
             time_in_phase_days=30
@@ -458,7 +462,8 @@ async def generate_complete_user_analysis(user_id: str, session: Session = Depen
         analysis["phase_transition_readiness"] = phase_evaluation
         
         if job_metrics:
-            career_analysis = await ai_service.analyze_career_transition_readiness(
+            service = AIService()
+            career_analysis = await service.analyze_career_transition_readiness(
                 user=user,
                 job_metrics=job_metrics
             )

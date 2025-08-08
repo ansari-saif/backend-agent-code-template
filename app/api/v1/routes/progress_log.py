@@ -13,7 +13,6 @@ from app.models.user import User
 from app.services.ai_service import AIService
 
 router = APIRouter()
-ai_service = AIService()
 
 @router.post("/", response_model=ProgressLogResponse, status_code=status.HTTP_201_CREATED)
 def create_progress_log(progress_log: ProgressLogCreate, session: Session = Depends(get_session)):
@@ -234,7 +233,8 @@ async def generate_progress_log(
     
     # Generate progress log content using AI
     try:
-        progress_data = await ai_service.generate_progress_log_content(
+        service = AIService()
+        progress_data = await service.generate_progress_log_content(
             session=session,
             user_id=user_id,
             date=target_date
