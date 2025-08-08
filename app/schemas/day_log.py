@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
 
 class DayLogBase(BaseModel):
@@ -51,3 +51,8 @@ class DayLogUpdate(BaseModel):
     tomorrow_plan: Optional[str] = None
     weather: Optional[str] = None
     location: Optional[str] = None
+
+
+class DayLogBulkCreate(BaseModel):
+    user_id: str
+    day_logs: List[DayLogBase]

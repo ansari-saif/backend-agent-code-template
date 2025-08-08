@@ -352,6 +352,62 @@ class TestDayLogIntegration:
         assert final_state["highlights"] == "Highlight 1"
         assert final_state["challenges"] == "Challenge 2"
 
+    def test_bulk_day_log_creation(self, client, session: Session, test_user):
+        """Test bulk creation of day logs."""
+        current_time = datetime.now()
+        
+        # Prepare bulk data
+        bulk_data = {
+            "user_id": test_user.telegram_id,
+            "day_logs": [
+                {
+                    "date": (date.today() - timedelta(days=i)).isoformat(),
+                    "start_time": (current_time - timedelta(days=i)).isoformat(),
+                    "end_time": (current_time - timedelta(days=i) + timedelta(hours=8)).isoformat(),
+                    "summary": f"Day {i} summary",
+                    "highlights": f"Day {i} highlights",
+                    "challenges": f"Day {i} challenges"
+                }
+                for i in range(3)
+            ]
+        }
+
+        # Test successful bulk creation
+        response = client.post("/day-logs/bulk", json=bulk_data)
+        assert response.status_code == 201
+        created_logs = response.json()
+        assert len(created_logs) == 3
+        assert all(log["user_id"] == test_user.telegram_id for log in created_logs)
+
+        # Test bulk creation with invalid user
+        invalid_bulk_data = {
+            "user_id": "non_existent_user",
+            "day_logs": bulk_data["day_logs"]
+        }
+        response = client.post("/day-logs/bulk", json=invalid_bulk_data)
+        assert response.status_code == 404
+
+        # Test bulk creation with invalid time ranges
+        invalid_time_bulk_data = {
+            "user_id": test_user.telegram_id,
+            "day_logs": [
+                {
+                    "date": date.today().isoformat(),
+                    "start_time": current_time.isoformat(),
+                    "end_time": (current_time - timedelta(hours=1)).isoformat(),
+                    "summary": "Invalid time range"
+                }
+            ]
+        }
+        response = client.post("/day-logs/bulk", json=invalid_time_bulk_data)
+        assert response.status_code == 422
+
+        # Verify all logs were created in the database
+        response = client.get(f"/day-logs/user/{test_user.telegram_id}")
+        assert response.status_code == 200
+        all_logs = response.json()
+        assert len(all_logs) >= 3  # There might be other logs from other tests
+
     def test_day_log_edge_cases(self, client, session: Session, test_user):
         """Test edge cases and boundary conditions."""
         

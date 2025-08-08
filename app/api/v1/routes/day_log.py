@@ -4,9 +4,10 @@ from typing import List
 from datetime import date, datetime, timedelta
 
 from app.core.database import get_session
+from app.services.day_log_service import create_day_log, create_bulk_day_logs
 from app.models.day_log import DayLog
 from app.models.user import User
-from app.schemas.day_log import DayLogCreate, DayLogResponse, DayLogUpdate
+from app.schemas.day_log import DayLogCreate, DayLogResponse, DayLogUpdate, DayLogBulkCreate
 
 router = APIRouter()
 
@@ -250,3 +251,35 @@ def delete_day_log(
     session.delete(day_log)
     session.commit()
     return None
+
+
+@router.post("/bulk", response_model=List[DayLogResponse], status_code=status.HTTP_201_CREATED)
+def create_bulk_day_logs_endpoint(
+    bulk_data: DayLogBulkCreate,
+    session: Session = Depends(get_session)
+):
+    """Create multiple day log entries for a user."""
+    # Verify user exists
+    user = session.get(User, bulk_data.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Validate end_time is after start_time for each log if provided
+    for log in bulk_data.day_logs:
+        if log.end_time and log.end_time < log.start_time:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="End time must be after start time"
+            )
+
+    try:
+        db_logs = create_bulk_day_logs(session, bulk_data.user_id, bulk_data.day_logs)
+        return db_logs
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

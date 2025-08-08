@@ -1,9 +1,9 @@
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from datetime import date
 from sqlmodel import Session, select
 
 from app.models.day_log import DayLog
-from app.schemas.day_log import DayLogCreate, DayLogUpdate
+from app.schemas.day_log import DayLogCreate, DayLogUpdate, DayLogBase
 
 
 def create_day_log(session: Session, data: DayLogCreate) -> DayLog:
@@ -76,4 +76,24 @@ def delete_day_log(session: Session, log_id: int) -> None:
     session.delete(log)
     session.commit()
 
+
+def create_bulk_day_logs(session: Session, user_id: str, day_logs: Sequence[DayLogBase]) -> List[DayLog]:
+    """Create multiple day log entries for a user in a single transaction."""
+    db_logs = []
+    for log_data in day_logs:
+        # Create DayLogCreate instance with user_id
+        create_data = DayLogCreate(
+            user_id=user_id,
+            **log_data.model_dump()
+        )
+        # Create DayLog model instance
+        db_log = DayLog.model_validate(create_data)
+        db_logs.append(db_log)
+        session.add(db_log)
+    
+    session.commit()
+    for log in db_logs:
+        session.refresh(log)
+    
+    return db_logs
 
