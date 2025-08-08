@@ -11,6 +11,10 @@ from app.schemas.task import CompletionStatusEnum, TaskPriorityEnum, EnergyRequi
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
+from app.models.day_log import DayLog
+from app.models.log import Log
+from sqlmodel import Session
+from typing import Optional
 
 
 class AIService:
@@ -564,4 +568,114 @@ class AIService:
                 "priority_adjustments": ["Balance workload across goals"],
                 "achievement_score": int(completion_rate),
                 "focus_areas": ["Goal completion", "Progress tracking"]
+            }
+
+    async def generate_progress_log_content(
+        self,
+        session: Session,
+        user_id: int,
+        date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        AI Agent 8: Progress Log Generator
+        Generate a comprehensive progress log based on user's activities, tasks, and metrics for a given day.
+        """
+        try:
+            # Use today's date if not specified
+            target_date = date or datetime.utcnow().date()
+            
+            # Fetch relevant data for the day
+            day_log = session.query(DayLog).filter(
+                DayLog.user_id == user_id,
+                DayLog.date == target_date
+            ).first()
+            
+            # Get tasks completed or worked on today
+            tasks = session.query(Task).filter(
+                Task.user_id == user_id,
+                Task.updated_at >= datetime.combine(target_date, datetime.min.time()),
+                Task.updated_at < datetime.combine(target_date + timedelta(days=1), datetime.min.time())
+            ).all()
+            
+            # Get any logs for the day
+            logs = session.query(Log).filter(
+                Log.user_id == user_id,
+                Log.created_at >= datetime.combine(target_date, datetime.min.time()),
+                Log.created_at < datetime.combine(target_date + timedelta(days=1), datetime.min.time())
+            ).all()
+            
+            # Get latest job metrics
+            job_metrics = session.query(JobMetrics).filter(
+                JobMetrics.user_id == user_id
+            ).order_by(JobMetrics.created_at.desc()).first()
+            
+            # Prepare context for AI
+            completed_tasks = [t for t in tasks if t.completion_status == CompletionStatusEnum.COMPLETED]
+            in_progress_tasks = [t for t in tasks if t.completion_status == CompletionStatusEnum.IN_PROGRESS]
+            
+            context = {
+                "day_summary": {
+                    "mood": day_log.mood if day_log else "Unknown",
+                    "energy_level": day_log.energy_level if day_log else 5,
+                    "sleep_quality": day_log.sleep_quality if day_log else "Unknown"
+                },
+                "tasks": {
+                    "completed": [t.description for t in completed_tasks],
+                    "in_progress": [t.description for t in in_progress_tasks]
+                },
+                "logs": [log.content for log in logs],
+                "metrics": {
+                    "productivity": job_metrics.productivity_score if job_metrics else None,
+                    "stress_level": job_metrics.stress_level if job_metrics else None
+                }
+            }
+            
+            prompt = f"""
+            Generate a comprehensive progress log based on today's activities:
+            
+            Context:
+            {json.dumps(context, indent=2)}
+            
+            Generate a progress log in JSON format:
+            {{
+                "achievements": ["achievement1", "achievement2"],
+                "challenges": ["challenge1", "challenge2"],
+                "learnings": ["learning1", "learning2"],
+                "next_steps": ["step1", "step2"],
+                "mood_analysis": "Analysis of mood and energy impact",
+                "productivity_insights": "Analysis of productivity patterns"
+            }}
+            
+            Guidelines:
+            - Extract achievements from completed tasks and logs
+            - Identify challenges from in-progress tasks and mood
+            - Derive learnings from the day's experiences
+            - Suggest next steps based on current progress
+            - Analyze mood and energy impact on productivity
+            - Provide actionable productivity insights
+            """
+            
+            response = self.model.generate_content(prompt)
+            
+            # Extract JSON from response
+            response_text = response.text.strip()
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_text = response_text
+            
+            progress_data = json.loads(json_text)
+            return progress_data
+            
+        except Exception as e:
+            # Provide a basic fallback response
+            return {
+                "achievements": ["Tracked daily progress", "Maintained activity log"],
+                "challenges": ["Some tasks still in progress", "Need to improve tracking"],
+                "learnings": ["Regular tracking helps progress", "Important to maintain logs"],
+                "next_steps": ["Complete pending tasks", "Continue progress tracking"],
+                "mood_analysis": "Consistent tracking of daily activities",
+                "productivity_insights": "Regular logging supports productivity"
             }
