@@ -1,12 +1,22 @@
 from sqlmodel import Field, Relationship, SQLModel
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, List
 from datetime import datetime
 from decimal import Decimal
+from sqlalchemy import JSON, Column
 from app.models import TimestampModel
 
 if TYPE_CHECKING:
     from app.models.user import User
 
+
+class JobMetricsAIAnalysis(SQLModel):
+    career_growth_score: Optional[float] = Field(default=None)
+    financial_health_score: Optional[float] = Field(default=None)
+    work_life_balance_score: Optional[float] = Field(default=None)
+    overall_recommendation: Optional[str] = Field(default=None)
+    action_items: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    risk_factors: List[str] = Field(sa_column=Column(JSON), default_factory=list)
+    opportunities: List[str] = Field(sa_column=Column(JSON), default_factory=list)
 
 class JobMetricsBase(TimestampModel):
     user_id: str = Field(foreign_key="users.telegram_id")
@@ -18,6 +28,9 @@ class JobMetricsBase(TimestampModel):
     job_satisfaction: int = Field(ge=1, le=10)
     quit_readiness_score: Optional[float] = None
     last_updated: datetime = Field(default_factory=datetime.utcnow)
+    
+    # AI Analysis fields
+    ai_analysis: Optional[dict] = Field(sa_column=Column(JSON), default=None)
 
 
 class JobMetricsCreate(JobMetricsBase):

@@ -4,6 +4,15 @@ from datetime import datetime
 from decimal import Decimal
 
 
+class JobMetricsAIAnalysis(BaseModel):
+    career_growth_score: float
+    financial_health_score: float
+    work_life_balance_score: float
+    overall_recommendation: str
+    action_items: list[str]
+    risk_factors: list[str]
+    opportunities: list[str]
+
 class JobMetricsBase(BaseModel):
     user_id: str
     current_salary: Decimal
@@ -13,6 +22,7 @@ class JobMetricsBase(BaseModel):
     stress_level: int
     job_satisfaction: int
     quit_readiness_score: float
+    ai_analysis: Optional[JobMetricsAIAnalysis] = None
 
 
 class JobMetricsCreate(JobMetricsBase):
