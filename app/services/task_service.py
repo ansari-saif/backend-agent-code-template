@@ -12,7 +12,6 @@ def create_task(session: Session, data: TaskCreate) -> Task:
         user_id=data.user_id,
         goal_id=data.goal_id,
         description=data.description,
-        deadline=data.deadline,
         priority=data.priority,
         ai_generated=bool(getattr(data, "ai_generated", False)),
         completion_status=data.completion_status,
@@ -83,14 +82,9 @@ def list_user_tasks(session: Session, user_id: str) -> List[Task]:
 
 
 def list_user_today_tasks(session: Session, user_id: str) -> List[Task]:
-    today = date.today()
-    return session.exec(
-        select(Task).where(
-            Task.user_id == user_id,
-            Task.deadline >= datetime.combine(today, datetime.min.time()),
-            Task.deadline < datetime.combine(today, datetime.max.time()),
-        )
-    ).all()
+    # Since we removed deadline, this function now returns all user tasks
+    # You may want to implement different logic based on your requirements
+    return session.exec(select(Task).where(Task.user_id == user_id)).all()
 
 
 def list_user_pending_tasks(session: Session, user_id: str) -> List[Task]:

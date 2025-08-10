@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 from pydantic import model_validator
 
@@ -27,12 +27,12 @@ class EnergyRequiredEnum(str, Enum):
 
 class TaskBase(BaseModel):
     description: str
-    deadline: Optional[datetime] = None
     priority: TaskPriorityEnum = TaskPriorityEnum.MEDIUM
     completion_status: CompletionStatusEnum = CompletionStatusEnum.PENDING
     estimated_duration: Optional[int] = Field(default=None, ge=0)  # minutes
     actual_duration: Optional[int] = Field(default=None, ge=0)     # minutes
     energy_required: EnergyRequiredEnum = EnergyRequiredEnum.MEDIUM
+    scheduled_for_date: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -63,13 +63,13 @@ class TaskResponse(TaskBase):
 class TaskUpdate(BaseModel):
     goal_id: Optional[int] = None
     description: Optional[str] = None
-    deadline: Optional[datetime] = None
     priority: Optional[TaskPriorityEnum] = None
     ai_generated: Optional[bool] = None
     completion_status: Optional[CompletionStatusEnum] = None
     estimated_duration: Optional[int] = Field(default=None, ge=0)
     actual_duration: Optional[int] = Field(default=None, ge=0)
     energy_required: Optional[EnergyRequiredEnum] = None
+    scheduled_for_date: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -86,12 +86,12 @@ class TaskUpdate(BaseModel):
 
 class TaskUpdate2(BaseModel):
     description: Optional[str] = None
-    deadline: Optional[datetime] = None
     priority: Optional[TaskPriorityEnum] = None
     completion_status: Optional[CompletionStatusEnum] = None
     estimated_duration: Optional[int] = Field(default=None, ge=0)
     actual_duration: Optional[int] = Field(default=None, ge=0)
     energy_required: Optional[EnergyRequiredEnum] = None
+    scheduled_for_date: Optional[date] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None

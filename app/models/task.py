@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import Column, String, Enum
 from app.schemas.task import TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
 
@@ -16,7 +16,6 @@ class Task(SQLModel, table=True):
     user_id: str = Field(foreign_key="users.telegram_id")
     goal_id: Optional[int] = Field(default=None, foreign_key="goals.goal_id")
     description: str
-    deadline: Optional[datetime] = None
     priority: TaskPriorityEnum = Field(
         default=TaskPriorityEnum.MEDIUM,
         sa_column=Column(Enum(TaskPriorityEnum, name='taskpriorityenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
@@ -32,6 +31,7 @@ class Task(SQLModel, table=True):
         default=EnergyRequiredEnum.MEDIUM,
         sa_column=Column(Enum(EnergyRequiredEnum, name='energyrequiredenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
+    scheduled_for_date: Optional[date] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     started_at: Optional[datetime] = None

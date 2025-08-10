@@ -37,13 +37,13 @@ def create_task(
         user_id=task.user_id,
         goal_id=task.goal_id,
         description=task.description,
-        deadline=task.deadline,
         priority=task.priority,
         ai_generated=bool(getattr(task, 'ai_generated', False)),
         completion_status=task.completion_status,
         estimated_duration=task.estimated_duration,
         actual_duration=task.actual_duration,
-        energy_required=task.energy_required
+        energy_required=task.energy_required,
+        scheduled_for_date=task.scheduled_for_date
     )
     session.add(db_task)
     session.commit()
@@ -200,7 +200,9 @@ def get_user_today_tasks(
     user_id: str,
     session: Session = Depends(get_session)
 ):
-    """Get all tasks due today for a specific user."""
+    """Get today's tasks for a specific user based on scheduled_for_date only."""
+    from datetime import date
+    
     # Verify user exists
     user = session.get(User, user_id)
     if not user:
@@ -210,11 +212,13 @@ def get_user_today_tasks(
         )
     
     today = date.today()
+    
+    # Get only tasks scheduled for today
     statement = select(Task).where(
         Task.user_id == user_id,
-        Task.deadline >= datetime.combine(today, datetime.min.time()),
-        Task.deadline < datetime.combine(today, datetime.max.time())
-    )
+        Task.scheduled_for_date == today
+    ).order_by(Task.priority.desc(), Task.created_at.desc())
+    
     tasks = session.exec(statement).all()
     return tasks
 
@@ -256,13 +260,13 @@ def create_bulk_tasks(
             db_task = Task(
                 user_id=task_data.user_id,
                 description=task_data.description,
-                deadline=task_data.deadline,
                 priority=task_data.priority,
                 ai_generated=False,
                 completion_status=task_data.completion_status,
                 estimated_duration=task_data.estimated_duration,
                 actual_duration=task_data.actual_duration,
                 energy_required=task_data.energy_required,
+                scheduled_for_date=task_data.scheduled_for_date,
             )
             session.add(db_task)
             created_tasks.append(db_task)

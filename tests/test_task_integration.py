@@ -64,7 +64,6 @@ class TestTaskIntegration:
             "user_id": test_user.telegram_id,
             "goal_id": test_goal.goal_id,
             "description": "Implement user authentication",
-            "deadline": (datetime.now() + timedelta(days=1)).isoformat(),
             "priority": TaskPriorityEnum.HIGH,
             "energy_required": EnergyRequiredEnum.HIGH,
             "estimated_duration": 120,  # 2 hours
@@ -114,13 +113,12 @@ class TestTaskIntegration:
     def test_task_filtering_and_listing(self, client, session: Session, test_user, test_goal):
         """Test task filtering and listing features."""
         
-        # Create multiple tasks with different statuses and deadlines
+        # Create multiple tasks with different statuses
         tasks_data = [
             {
                 "user_id": test_user.telegram_id,
                 "goal_id": test_goal.goal_id,
-                "description": "Task 1 - Due Today",
-                "deadline": datetime.now().isoformat(),
+                "description": "Task 1 - High Priority",
                 "priority": TaskPriorityEnum.HIGH,
                 "completion_status": CompletionStatusEnum.PENDING
             },
@@ -128,7 +126,6 @@ class TestTaskIntegration:
                 "user_id": test_user.telegram_id,
                 "goal_id": test_goal.goal_id,
                 "description": "Task 2 - In Progress",
-                "deadline": (datetime.now() + timedelta(days=1)).isoformat(),
                 "priority": TaskPriorityEnum.MEDIUM,
                 "completion_status": CompletionStatusEnum.IN_PROGRESS
             },
@@ -136,7 +133,6 @@ class TestTaskIntegration:
                 "user_id": test_user.telegram_id,
                 "goal_id": test_goal.goal_id,
                 "description": "Task 3 - Completed",
-                "deadline": (datetime.now() - timedelta(days=1)).isoformat(),
                 "priority": TaskPriorityEnum.LOW,
                 "completion_status": CompletionStatusEnum.COMPLETED
             }
@@ -160,11 +156,11 @@ class TestTaskIntegration:
         pending_tasks = response.json()
         assert len(pending_tasks) == 2  # PENDING and IN_PROGRESS tasks
 
-        # Test getting today's tasks
+        # Test getting today's tasks (now only returns tasks scheduled for today)
         response = client.get(f"/tasks/user/{test_user.telegram_id}/today")
         assert response.status_code == 200
         today_tasks = response.json()
-        assert len(today_tasks) == 1  # Only one task is due today
+        assert len(today_tasks) == 0  # No tasks are scheduled for today
 
         # Test filtering by goal
         response = client.get("/tasks/", params={"goal_id": test_goal.goal_id})
@@ -288,7 +284,6 @@ class TestTaskIntegration:
                 "user_id": test_user.telegram_id,
                 "goal_id": test_goal.goal_id,
                 "description": "Task 1",
-                "deadline": datetime.now().isoformat(),
                 "priority": TaskPriorityEnum.HIGH,
                 "completion_status": CompletionStatusEnum.PENDING
             },
@@ -296,7 +291,6 @@ class TestTaskIntegration:
                 "user_id": test_user.telegram_id,
                 "goal_id": test_goal.goal_id,
                 "description": "Task 2",
-                "deadline": datetime.now().isoformat(),
                 "priority": TaskPriorityEnum.MEDIUM,
                 "completion_status": CompletionStatusEnum.IN_PROGRESS
             }
@@ -361,7 +355,6 @@ class TestTaskIntegration:
             "user_id": test_user.telegram_id,
             "goal_id": test_goal.goal_id,
             "description": "Initial task description",
-            "deadline": datetime.now().isoformat(),
             "priority": TaskPriorityEnum.MEDIUM,
             "ai_generated": True,
             "completion_status": CompletionStatusEnum.PENDING,
@@ -390,11 +383,9 @@ class TestTaskIntegration:
         session.refresh(new_goal)
 
         # Prepare update data with all fields
-        update_deadline = "2024-08-05T13:40:36.538Z"
         update_data = {
             "goal_id": new_goal.goal_id,
             "description": "Updated task description",
-            "deadline": update_deadline,
             "priority": TaskPriorityEnum.URGENT,
             "ai_generated": False,
             "completion_status": CompletionStatusEnum.CANCELLED,
@@ -411,8 +402,6 @@ class TestTaskIntegration:
         # Verify all fields were updated correctly
         assert updated_task["goal_id"] == new_goal.goal_id
         assert updated_task["description"] == update_data["description"]
-        # Compare datetime objects ignoring timezone
-        assert parse(updated_task["deadline"]).replace(tzinfo=None) == parse(update_deadline).replace(tzinfo=None)
         assert updated_task["priority"] == update_data["priority"]
         assert updated_task["ai_generated"] == update_data["ai_generated"]
         assert updated_task["completion_status"] == update_data["completion_status"]
@@ -478,7 +467,7 @@ class TestTaskIntegration:
             "user_id": test_user.telegram_id,
             "goal_id": test_goal.goal_id,
             "description": "Initial description",
-            "deadline": datetime.now().isoformat(),
+            "scheduled_for_date": date.today().isoformat(),
             "priority": TaskPriorityEnum.MEDIUM,
             "ai_generated": True,
             "completion_status": CompletionStatusEnum.PENDING,
@@ -510,7 +499,6 @@ class TestTaskIntegration:
         update_data = {
             "goal_id": new_goal.goal_id,  # Using actual goal_id from database
             "description": "string",
-            "deadline": "2013-08-05T13:40:36.538Z",
             "priority": "Urgent",  # Using string value as in cURL
             "ai_generated": False,
             "completion_status": "Cancelled",  # Using string value as in cURL
@@ -533,7 +521,6 @@ class TestTaskIntegration:
         # Verify all fields were updated correctly
         assert updated_task["goal_id"] == new_goal.goal_id
         assert updated_task["description"] == "string"
-        assert parse(updated_task["deadline"]).replace(tzinfo=None) == parse("2013-08-05T13:40:36.538Z").replace(tzinfo=None)
         assert updated_task["priority"] == TaskPriorityEnum.URGENT
         assert updated_task["ai_generated"] is False
         assert updated_task["completion_status"] == CompletionStatusEnum.CANCELLED
@@ -594,3 +581,253 @@ class TestTaskIntegration:
         assert db_task.energy_required == EnergyRequiredEnum.LOW
         assert db_task.estimated_duration == 2629
         assert db_task.actual_duration == 5124
+
+    def test_scheduled_for_date_functionality(self, client, session: Session, test_user, test_goal):
+        """Test the new scheduled_for_date field functionality."""
+        
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
+        yesterday = today - timedelta(days=1)
+        
+        # Create tasks with different scheduled dates
+        tasks_data = [
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Task scheduled for today",
+                "priority": TaskPriorityEnum.HIGH,
+                "scheduled_for_date": today.isoformat()
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Task scheduled for tomorrow",
+                "priority": TaskPriorityEnum.MEDIUM,
+                "scheduled_for_date": tomorrow.isoformat()
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Task scheduled for yesterday",
+                "priority": TaskPriorityEnum.LOW,
+                "scheduled_for_date": yesterday.isoformat()
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Task with no scheduled date",
+                "priority": TaskPriorityEnum.MEDIUM
+            }
+        ]
+
+        # Create tasks
+        created_tasks = []
+        for task_data in tasks_data:
+            response = client.post("/tasks/", json=task_data)
+            assert response.status_code == 201
+            created_tasks.append(response.json())
+
+        # Verify scheduled_for_date is properly set
+        assert created_tasks[0]["scheduled_for_date"] == today.isoformat()
+        assert created_tasks[1]["scheduled_for_date"] == tomorrow.isoformat()
+        assert created_tasks[2]["scheduled_for_date"] == yesterday.isoformat()
+        assert created_tasks[3]["scheduled_for_date"] is None
+
+        # Test updating scheduled_for_date
+        task_id = created_tasks[0]["task_id"]
+        update_data = {
+            "scheduled_for_date": tomorrow.isoformat()
+        }
+        response = client.put(f"/tasks/{task_id}", json=update_data)
+        assert response.status_code == 200
+        updated_task = response.json()
+        assert updated_task["scheduled_for_date"] == tomorrow.isoformat()
+
+        # Test removing scheduled_for_date
+        update_data = {
+            "scheduled_for_date": None
+        }
+        response = client.put(f"/tasks/{task_id}", json=update_data)
+        assert response.status_code == 200
+        updated_task = response.json()
+        assert updated_task["scheduled_for_date"] is None
+
+    def test_today_tasks_endpoint(self, client, session: Session, test_user, test_goal):
+        """Test the updated today's tasks endpoint with scheduled_for_date only."""
+        
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        
+        # Create various types of tasks
+        tasks_data = [
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Task scheduled for today",
+                "priority": TaskPriorityEnum.MEDIUM,
+                "completion_status": CompletionStatusEnum.PENDING,
+                "scheduled_for_date": today.isoformat()
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "High priority task",
+                "priority": TaskPriorityEnum.HIGH,
+                "completion_status": CompletionStatusEnum.PENDING,
+                "scheduled_for_date": yesterday.isoformat()  # Old date but high priority
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Urgent task",
+                "priority": TaskPriorityEnum.URGENT,
+                "completion_status": CompletionStatusEnum.IN_PROGRESS,
+                "scheduled_for_date": yesterday.isoformat()  # Old date but urgent
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Completed task",
+                "priority": TaskPriorityEnum.HIGH,
+                "completion_status": CompletionStatusEnum.COMPLETED,
+                "scheduled_for_date": today.isoformat()
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Low priority old task",
+                "priority": TaskPriorityEnum.LOW,
+                "completion_status": CompletionStatusEnum.PENDING,
+                "scheduled_for_date": yesterday.isoformat()
+            }
+        ]
+
+        # Create tasks
+        created_tasks = []
+        for task_data in tasks_data:
+            response = client.post("/tasks/", json=task_data)
+            assert response.status_code == 201
+            created_tasks.append(response.json())
+
+        # Test today's tasks endpoint
+        response = client.get(f"/tasks/user/{test_user.telegram_id}/today")
+        assert response.status_code == 200
+        today_tasks = response.json()
+
+        # Should include only tasks scheduled for today:
+        # 1. Task scheduled for today (task 0)
+        # 2. Completed task (task 3) - scheduled for today
+        assert len(today_tasks) == 2
+
+        # Verify only tasks scheduled for today are returned
+        scheduled_dates = [task["scheduled_for_date"] for task in today_tasks]
+        assert all(date.fromisoformat(scheduled_date) == today for scheduled_date in scheduled_dates)
+
+        # Verify tasks are ordered by priority (URGENT, HIGH, MEDIUM, LOW)
+        priorities = [task["priority"] for task in today_tasks]
+        # Check that we have the expected tasks
+        assert TaskPriorityEnum.HIGH in priorities  # Completed task scheduled for today
+        assert TaskPriorityEnum.MEDIUM in priorities  # Task scheduled for today
+
+        # Test with a different user (should return empty)
+        other_user = User(
+            telegram_id="other_user_456",
+            name="Other User",
+            current_phase=PhaseEnum.MVP,
+            energy_profile=EnergyProfileEnum.MORNING,
+            onboarding_complete=True
+        )
+        session.add(other_user)
+        session.commit()
+
+        response = client.get(f"/tasks/user/{other_user.telegram_id}/today")
+        assert response.status_code == 200
+        assert len(response.json()) == 0
+
+        # Test with non-existent user
+        response = client.get("/tasks/user/non_existent_user/today")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "User not found"
+
+    def test_bulk_task_creation_with_scheduled_date(self, client, session: Session, test_user, test_goal):
+        """Test bulk task creation with scheduled_for_date field."""
+        
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
+        
+        bulk_tasks_data = {
+            "tasks": [
+                {
+                    "user_id": test_user.telegram_id,
+                    "goal_id": test_goal.goal_id,
+                    "description": "Bulk task 1",
+                    "priority": TaskPriorityEnum.HIGH,
+                    "scheduled_for_date": today.isoformat()
+                },
+                {
+                    "user_id": test_user.telegram_id,
+                    "goal_id": test_goal.goal_id,
+                    "description": "Bulk task 2",
+                    "priority": TaskPriorityEnum.MEDIUM,
+                    "scheduled_for_date": tomorrow.isoformat()
+                },
+                {
+                    "user_id": test_user.telegram_id,
+                    "goal_id": test_goal.goal_id,
+                    "description": "Bulk task 3",
+                    "priority": TaskPriorityEnum.LOW
+                    # No scheduled_for_date
+                }
+            ]
+        }
+
+        # Create bulk tasks
+        response = client.post("/tasks/bulk", json=bulk_tasks_data)
+        assert response.status_code == 201
+        created_tasks = response.json()
+        assert len(created_tasks) == 3
+
+        # Verify scheduled_for_date is properly set
+        assert created_tasks[0]["scheduled_for_date"] == today.isoformat()
+        assert created_tasks[1]["scheduled_for_date"] == tomorrow.isoformat()
+        assert created_tasks[2]["scheduled_for_date"] is None
+
+        # Verify all tasks belong to the correct user
+        for task in created_tasks:
+            assert task["user_id"] == test_user.telegram_id
+
+    def test_task_schema_validation_with_scheduled_date(self, client, session: Session, test_user, test_goal):
+        """Test schema validation for scheduled_for_date field."""
+        
+        # Test valid date format
+        valid_task = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Valid task",
+            "priority": TaskPriorityEnum.HIGH,
+            "scheduled_for_date": "2024-03-15"  # Valid ISO date format
+        }
+        response = client.post("/tasks/", json=valid_task)
+        assert response.status_code == 201
+
+        # Test invalid date format
+        invalid_task = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Invalid task",
+            "priority": TaskPriorityEnum.HIGH,
+            "scheduled_for_date": "invalid-date"  # Invalid date format
+        }
+        response = client.post("/tasks/", json=invalid_task)
+        assert response.status_code == 422  # Validation error
+
+        # Test null scheduled_for_date
+        null_date_task = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Null date task",
+            "priority": TaskPriorityEnum.HIGH,
+            "scheduled_for_date": None
+        }
+        response = client.post("/tasks/", json=null_date_task)
+        assert response.status_code == 201

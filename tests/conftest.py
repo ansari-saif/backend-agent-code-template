@@ -138,13 +138,13 @@ def sample_task_data():
         "user_id": "123456789",
         "goal_id": 1,
         "description": "Design user authentication flow",
-        "deadline": datetime(2024, 3, 15, 17, 0),
         "priority": TaskPriorityEnum.HIGH,
         "ai_generated": True,
         "completion_status": CompletionStatusEnum.IN_PROGRESS,
         "estimated_duration": 120,
         "actual_duration": None,
-        "energy_required": EnergyRequiredEnum.HIGH
+        "energy_required": EnergyRequiredEnum.HIGH,
+        "scheduled_for_date": date(2024, 3, 1)
     }
 
 
@@ -155,12 +155,12 @@ def sample_task_create_data():
         "user_id": "123456789",
         "goal_id": 1,
         "description": "Design user authentication flow",
-        "deadline": "2024-03-15T17:00:00",
         "priority": "High",
         "ai_generated": True,
         "completion_status": CompletionStatusEnum.IN_PROGRESS.value,
         "estimated_duration": 120,
-        "energy_required": "High"
+        "energy_required": "High",
+        "scheduled_for_date": "2024-03-01"
     }
 
 

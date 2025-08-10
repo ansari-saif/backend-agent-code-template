@@ -165,39 +165,7 @@ class AIService:
         except Exception as e:
             return f"You're making progress on your entrepreneurial journey, {user.name}! Every challenge you face is building the resilience you'll need to successfully transition from your job. Keep focusing on your goals - you're closer than you think!"
 
-    async def generate_deadline_reminder(self, task: Task, time_remaining: str, user_pattern: str, stress_level: int, completion_rate: float) -> str:
-        """
-        AI Agent 3: Smart Deadline Intelligence
-        Generate contextual deadline reminders based on user patterns and urgency.
-        """
-        try:
-            prompt = f"""
-            Generate a smart deadline reminder for:
-            
-            Task: {task.description}
-            Time Remaining: {time_remaining}
-            User Pattern: {user_pattern}
-            Current Stress Level: {stress_level}/10
-            User's Completion Rate: {completion_rate:.1%}
-            Task Priority: {task.priority}
-            Estimated Duration: {task.estimated_duration} minutes
-            
-            Create a reminder that:
-            - Adjusts tone based on stress level (gentle if high stress, more direct if low stress)
-            - Considers user's completion patterns
-            - Provides helpful time management suggestions
-            - Maintains motivation while being realistic about urgency
-            - Includes specific next steps
-            
-            Keep it concise and actionable.
-            """
-            
-            response = self.model.generate_content(prompt)
-            return response.text.strip()
-            
-        except Exception as e:
-            urgency = "urgent" if "day" in time_remaining.lower() else "upcoming"
-            return f"Friendly reminder: '{task.description}' is {urgency} with {time_remaining} remaining. Consider breaking it into smaller steps if it feels overwhelming!"
+
 
     async def generate_weekly_analysis(self, progress_logs: List[ProgressLog], goals: List[Goal], tasks: List[Task]) -> Dict[str, Any]:
         """
