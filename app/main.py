@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.routes import user
 from app.api.v1.routes import goal
 from app.api.v1.routes import task
@@ -16,6 +17,15 @@ app = FastAPI(
     title="AI-Powered Productivity System",
     description="A comprehensive productivity system with AI agents for entrepreneurs",
     version="1.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Create database tables on startup

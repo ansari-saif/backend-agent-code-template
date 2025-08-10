@@ -21,6 +21,8 @@ from app.models.ai_context import AIContext
 from app.schemas.ai_context import AIContextCreate
 from app.models.job_metrics import JobMetrics
 from app.schemas.job_metrics import JobMetricsCreate
+from app.models.prompt import Prompt
+from app.schemas.prompt import PromptCreate
 
 
 @pytest.fixture(name="session")
@@ -253,6 +255,27 @@ def sample_job_metrics_create_data():
 
 
 @pytest.fixture
+def sample_prompt_data():
+    """Sample prompt data for testing."""
+    return {
+        "user_id": "123456789",
+        "prompt_text": "What should I focus on today?",
+        "response_text": "Based on your goals, focus on completing the MVP tasks.",
+        "created_at": datetime(2024, 3, 1, 10, 0),
+        "completed_at": datetime(2024, 3, 1, 10, 5)
+    }
+
+
+@pytest.fixture
+def sample_prompt_create_data():
+    """Sample prompt creation data."""
+    return {
+        "user_id": "123456789",
+        "prompt_text": "What should I focus on today?"
+    }
+
+
+@pytest.fixture
 def sample_day_log_create_data(test_user):
     """Sample day log creation data."""
     current_time = datetime.utcnow()
@@ -294,5 +317,15 @@ def test_task(session: Session, test_user, test_goal, sample_task_data):
     session.commit()
     session.refresh(task)
     return task
+
+
+@pytest.fixture
+def test_prompt(session: Session, test_user, sample_prompt_data):
+    """Create a test prompt in the database."""
+    prompt = Prompt(**sample_prompt_data)
+    session.add(prompt)
+    session.commit()
+    session.refresh(prompt)
+    return prompt
 
 # Removed test_todo fixture (Todo module deprecated)

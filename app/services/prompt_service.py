@@ -31,6 +31,11 @@ class PromptService:
             raise LookupError(f"Prompt with ID {prompt_id} not found")
         return prompt
     
+    async def get_user_prompts(self, session: Session, user_id: str) -> list[Prompt]:
+        """Retrieve all prompts for a specific user"""
+        prompts_stmt = select(Prompt).where(Prompt.user_id == user_id).order_by(Prompt.created_at.desc())
+        return session.exec(prompts_stmt).all()
+    
     async def process_prompt(self, session: Session, prompt: Prompt) -> Prompt:
         """Process the prompt and update the response"""
         try:

@@ -26,6 +26,14 @@ async def create_prompt(
             detail=str(e)
         )
 
+@router.get("/user/{user_id}", response_model=list[PromptResponse])
+async def get_user_prompts(
+    user_id: str,
+    session: Session = Depends(get_session)
+) -> list[Prompt]:
+    """Get all prompts for a specific user"""
+    return await prompt_service.get_user_prompts(session, user_id)
+
 @router.get("/{prompt_id}", response_model=PromptResponse)
 async def get_prompt(
     prompt_id: str,
