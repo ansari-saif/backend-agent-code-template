@@ -7,7 +7,8 @@ from app.models.task import Task
 from app.models.user import User
 from app.models.goal import Goal
 from app.schemas import task as schemas
-from app.schemas.task import CompletionStatusEnum, BulkTaskCreate, TaskCreate, TaskUpdate
+from app.schemas.task import CompletionStatusEnum, BulkTaskCreate, TaskCreate, TaskUpdate, TaskDiscard, TaskRestore
+from app.services import task_service
 
 router = APIRouter()
 
@@ -33,24 +34,14 @@ def create_task(
         if goal.user_id != task.user_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Goal does not belong to user")
 
-    db_task = Task(
-        user_id=task.user_id,
-        goal_id=task.goal_id,
-        description=task.description,
-        priority=task.priority,
-        ai_generated=bool(getattr(task, 'ai_generated', False)),
-        completion_status=task.completion_status,
-        estimated_duration=task.estimated_duration,
-        actual_duration=task.actual_duration,
-        energy_required=task.energy_required,
-        scheduled_for_date=task.scheduled_for_date,
-        started_at=task.started_at,
-        completed_at=task.completed_at
-    )
-    session.add(db_task)
-    session.commit()
-    session.refresh(db_task)
-    return db_task
+    try:
+        db_task = task_service.create_task(session, task)
+        return db_task
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/", response_model=List[schemas.TaskResponse])
@@ -60,21 +51,49 @@ def read_tasks(
     user_id: Optional[str] = None,
     goal_id: Optional[int] = None,
     completion_status: Optional[CompletionStatusEnum] = None,
+    include_discarded: bool = Query(False, description="Include discarded tasks in results"),
     session: Session = Depends(get_session)
 ):
     """Get all tasks with optional filtering."""
-    statement = select(Task)
-    if user_id:
-        statement = statement.where(Task.user_id == user_id)
-    
-    if goal_id:
-        statement = statement.where(Task.goal_id == goal_id)
-    if completion_status:
-        statement = statement.where(Task.completion_status == completion_status)
-    
-    statement = statement.offset(skip).limit(limit)
-    tasks = session.exec(statement).all()
-    return tasks
+    try:
+        tasks = task_service.list_tasks(
+            session=session,
+            skip=skip,
+            limit=limit,
+            user_id=user_id,
+            goal_id=goal_id,
+            completion_status=completion_status,
+            include_discarded=include_discarded
+        )
+        return tasks
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get("/discarded", response_model=List[schemas.TaskResponse])
+def list_discarded_tasks(
+    user_id: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    session: Session = Depends(get_session)
+):
+    """Get all discarded tasks."""
+    try:
+        tasks = task_service.list_discarded_tasks(
+            session=session,
+            user_id=user_id,
+            skip=skip,
+            limit=limit
+        )
+        return tasks
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/{task_id}", response_model=schemas.TaskResponse)
@@ -83,7 +102,7 @@ def read_task(
     session: Session = Depends(get_session)
 ):
     """Get a specific task by ID."""
-    task = session.get(Task, task_id)
+    task = task_service.get_task(session, task_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -99,49 +118,63 @@ def update_task(
     session: Session = Depends(get_session)
 ):
     """Update a task."""
-    task = session.get(Task, task_id)
-    if not task:
+    try:
+        task = task_service.update_task(session, task_id, task_update)
+        return task
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
-    
-    task_data = task_update.model_dump(exclude_unset=True)
-    
-    # Validate duration fields
-    if task_data.get("estimated_duration") is not None and task_data["estimated_duration"] < 0:
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Estimated duration cannot be negative"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
-    if task_data.get("actual_duration") is not None and task_data["actual_duration"] < 0:
+
+
+@router.post("/{task_id}/discard", response_model=schemas.TaskResponse)
+def discard_task(
+    task_id: int,
+    discard_data: TaskDiscard,
+    session: Session = Depends(get_session)
+):
+    """Discard a task with a message explaining why it was discarded."""
+    try:
+        task = task_service.discard_task(session, task_id, discard_data)
+        return task
+    except LookupError:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Actual duration cannot be negative"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
         )
-    
-    # Validate goal existence if goal_id is provided
-    if task_data.get("goal_id") is not None:
-        goal = session.get(Goal, task_data["goal_id"])
-        if not goal:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Goal not found"
-            )
-        # Verify goal belongs to the task's user
-        if goal.user_id != task.user_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Goal does not belong to the task's user"
-            )
-    
-    for field, value in task_data.items():
-        setattr(task, field, value)
-    
-    session.add(task)
-    session.commit()
-    session.refresh(task)
-    return task
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post("/{task_id}/restore", response_model=schemas.TaskResponse)
+def restore_task(
+    task_id: int,
+    restore_data: Optional[TaskRestore] = None,
+    session: Session = Depends(get_session)
+):
+    """Restore a discarded task back to pending status."""
+    try:
+        task = task_service.restore_task(session, task_id, restore_data)
+        return task
+    except LookupError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -149,22 +182,21 @@ def delete_task(
     task_id: int,
     session: Session = Depends(get_session)
 ):
-    """Delete a task."""
-    task = session.get(Task, task_id)
-    if not task:
+    """Delete a task permanently."""
+    try:
+        task_service.delete_task(session, task_id)
+        return None
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
-    
-    session.delete(task)
-    session.commit()
-    return None
 
 
 @router.get("/user/{user_id}/pending", response_model=List[schemas.TaskResponse])
 def get_user_pending_tasks(
     user_id: str,
+    include_discarded: bool = Query(False, description="Include discarded tasks in results"),
     session: Session = Depends(get_session)
 ):
     """Get all pending tasks for a specific user."""
@@ -176,17 +208,20 @@ def get_user_pending_tasks(
             detail="User not found"
         )
     
-    statement = select(Task).where(
-        Task.user_id == user_id,
-        Task.completion_status.in_([CompletionStatusEnum.PENDING, CompletionStatusEnum.IN_PROGRESS])
-    )
-    tasks = session.exec(statement).all()
-    return tasks
+    try:
+        tasks = task_service.list_user_pending_tasks(session, user_id, include_discarded)
+        return tasks
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/user/{user_id}", response_model=List[schemas.TaskResponse])
 def get_user_tasks(
     user_id: str,
+    include_discarded: bool = Query(False, description="Include discarded tasks in results"),
     session: Session = Depends(get_session)
 ):
     """Get all tasks for a specific user."""
@@ -194,12 +229,19 @@ def get_user_tasks(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    statement = select(Task).where(Task.user_id == user_id)
-    return session.exec(statement).all()
+    try:
+        tasks = task_service.list_user_tasks(session, user_id, include_discarded)
+        return tasks
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 @router.get("/user/{user_id}/today", response_model=List[schemas.TaskResponse])
 def get_user_today_tasks(
     user_id: str,
+    include_discarded: bool = Query(False, description="Include discarded tasks in results"),
     session: Session = Depends(get_session)
 ):
     """Get today's tasks for a specific user based on scheduled_for_date only."""
@@ -213,16 +255,14 @@ def get_user_today_tasks(
             detail="User not found"
         )
     
-    today = date.today()
-    
-    # Get only tasks scheduled for today
-    statement = select(Task).where(
-        Task.user_id == user_id,
-        Task.scheduled_for_date == today
-    ).order_by(Task.priority.desc(), Task.created_at.desc())
-    
-    tasks = session.exec(statement).all()
-    return tasks
+    try:
+        tasks = task_service.list_user_today_tasks(session, user_id, include_discarded)
+        return tasks
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.patch("/{task_id}/complete", response_model=schemas.TaskResponse)
@@ -231,10 +271,8 @@ def complete_task(
     session: Session = Depends(get_session)
 ):
     """Mark a task as completed."""
-    from app.services.task_service import complete_task as complete_task_service
-    
     try:
-        task = complete_task_service(session, task_id)
+        task = task_service.complete_task(session, task_id)
         return task
     except LookupError:
         raise HTTPException(

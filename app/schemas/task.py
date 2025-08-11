@@ -17,6 +17,7 @@ class CompletionStatusEnum(str, Enum):
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
     CANCELLED = "Cancelled"
+    DISCARDED = "Discarded"
 
 
 class EnergyRequiredEnum(str, Enum):
@@ -37,6 +38,7 @@ class TaskBase(BaseModel):
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    discard_message: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_timestamps(self) -> "TaskBase":
@@ -82,6 +84,14 @@ class TaskUpdate(BaseModel):
         if self.created_at and self.updated_at and self.created_at > self.updated_at:
             raise ValueError("created_at cannot be after updated_at")
         return self
+
+
+class TaskDiscard(BaseModel):
+    discard_message: str = Field(..., min_length=1, max_length=500, description="Reason for discarding the task")
+
+
+class TaskRestore(BaseModel):
+    restore_message: Optional[str] = Field(default=None, max_length=500, description="Optional note when restoring the task")
 
 
 class TaskUpdate2(BaseModel):

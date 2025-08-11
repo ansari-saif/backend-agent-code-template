@@ -914,3 +914,178 @@ class TestTaskIntegration:
         # Verify actual_duration was not overwritten
         assert completed_task_with_duration["completion_status"] == CompletionStatusEnum.COMPLETED
         assert completed_task_with_duration["actual_duration"] == 120  # Should remain unchanged
+
+    def test_task_discard_functionality(self, client, session: Session, test_user, test_goal):
+        """Test task discard and restore functionality."""
+        
+        # 1. Create a task
+        task_data = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Task to be discarded",
+            "priority": TaskPriorityEnum.MEDIUM
+        }
+        
+        response = client.post("/tasks/", json=task_data)
+        assert response.status_code == 201
+        task_id = response.json()["task_id"]
+
+        # 2. Discard the task with a message
+        discard_data = {
+            "discard_message": "This task is no longer relevant"
+        }
+        response = client.post(f"/tasks/{task_id}/discard", json=discard_data)
+        assert response.status_code == 200
+        discarded_task = response.json()
+        assert discarded_task["completion_status"] == CompletionStatusEnum.DISCARDED
+        assert discarded_task["discard_message"] == "This task is no longer relevant"
+
+        # 3. Verify task is not in regular task lists
+        response = client.get(f"/tasks/?user_id={test_user.telegram_id}")
+        assert response.status_code == 200
+        tasks = response.json()
+        assert not any(task["task_id"] == task_id for task in tasks)
+
+        # 4. Verify task appears in discarded tasks list
+        response = client.get("/tasks/discarded")
+        assert response.status_code == 200
+        discarded_tasks = response.json()
+        assert any(task["task_id"] == task_id for task in discarded_tasks)
+
+        # 5. Restore the task
+        restore_data = {
+            "restore_message": "Task is relevant again"
+        }
+        response = client.post(f"/tasks/{task_id}/restore", json=restore_data)
+        assert response.status_code == 200
+        restored_task = response.json()
+        assert restored_task["completion_status"] == CompletionStatusEnum.PENDING
+        assert restored_task["discard_message"] is None
+
+        # 6. Verify task is back in regular task lists
+        response = client.get(f"/tasks/?user_id={test_user.telegram_id}")
+        assert response.status_code == 200
+        tasks = response.json()
+        assert any(task["task_id"] == task_id for task in tasks)
+
+    def test_task_discard_validation(self, client, session: Session, test_user, test_goal):
+        """Test validation for discard functionality."""
+        
+        # 1. Create a task
+        task_data = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Task for discard validation",
+            "priority": TaskPriorityEnum.MEDIUM
+        }
+        
+        response = client.post("/tasks/", json=task_data)
+        assert response.status_code == 201
+        task_id = response.json()["task_id"]
+
+        # 2. Try to discard with empty message
+        discard_data = {
+            "discard_message": ""
+        }
+        response = client.post(f"/tasks/{task_id}/discard", json=discard_data)
+        assert response.status_code == 422  # Validation error
+
+        # 3. Try to discard with missing message
+        response = client.post(f"/tasks/{task_id}/discard", json={})
+        assert response.status_code == 422  # Validation error
+
+        # 4. Discard the task properly
+        discard_data = {
+            "discard_message": "Valid discard reason"
+        }
+        response = client.post(f"/tasks/{task_id}/discard", json=discard_data)
+        assert response.status_code == 200
+
+        # 5. Try to discard an already discarded task
+        response = client.post(f"/tasks/{task_id}/discard", json=discard_data)
+        assert response.status_code == 400  # Already discarded
+
+        # 6. Try to restore a non-discarded task
+        task_data2 = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Another task",
+            "priority": TaskPriorityEnum.MEDIUM
+        }
+        response = client.post("/tasks/", json=task_data2)
+        assert response.status_code == 201
+        task_id2 = response.json()["task_id"]
+
+        response = client.post(f"/tasks/{task_id2}/restore")
+        assert response.status_code == 400  # Not discarded
+
+    def test_task_discard_in_lists(self, client, session: Session, test_user, test_goal):
+        """Test that discarded tasks are properly filtered in list endpoints."""
+        
+        # 1. Create multiple tasks
+        tasks_data = [
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Active task 1",
+                "priority": TaskPriorityEnum.HIGH
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Active task 2",
+                "priority": TaskPriorityEnum.MEDIUM
+            },
+            {
+                "user_id": test_user.telegram_id,
+                "goal_id": test_goal.goal_id,
+                "description": "Task to be discarded",
+                "priority": TaskPriorityEnum.LOW
+            }
+        ]
+        
+        task_ids = []
+        for task_data in tasks_data:
+            response = client.post("/tasks/", json=task_data)
+            assert response.status_code == 201
+            task_ids.append(response.json()["task_id"])
+
+        # 2. Discard one task
+        discard_data = {
+            "discard_message": "No longer needed"
+        }
+        response = client.post(f"/tasks/{task_ids[2]}/discard", json=discard_data)
+        assert response.status_code == 200
+
+        # 3. Check regular task list (should exclude discarded)
+        response = client.get(f"/tasks/?user_id={test_user.telegram_id}")
+        assert response.status_code == 200
+        tasks = response.json()
+        assert len(tasks) == 2
+        assert not any(task["task_id"] == task_ids[2] for task in tasks)
+
+        # 4. Check with include_discarded=True
+        response = client.get(f"/tasks/?user_id={test_user.telegram_id}&include_discarded=true")
+        assert response.status_code == 200
+        tasks = response.json()
+        assert len(tasks) == 3
+        assert any(task["task_id"] == task_ids[2] for task in tasks)
+
+        # 5. Check user pending tasks (should exclude discarded)
+        response = client.get(f"/tasks/user/{test_user.telegram_id}/pending")
+        assert response.status_code == 200
+        tasks = response.json()
+        assert not any(task["task_id"] == task_ids[2] for task in tasks)
+
+        # 6. Check user all tasks (should exclude discarded)
+        response = client.get(f"/tasks/user/{test_user.telegram_id}")
+        assert response.status_code == 200
+        tasks = response.json()
+        assert not any(task["task_id"] == task_ids[2] for task in tasks)
+
+        # 7. Check discarded tasks endpoint
+        response = client.get("/tasks/discarded")
+        assert response.status_code == 200
+        discarded_tasks = response.json()
+        assert len(discarded_tasks) == 1
+        assert discarded_tasks[0]["task_id"] == task_ids[2]

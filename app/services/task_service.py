@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 
 from app.models.task import Task
 from app.models.goal import Goal
-from app.schemas.task import TaskCreate, TaskUpdate, CompletionStatusEnum
+from app.schemas.task import TaskCreate, TaskUpdate, CompletionStatusEnum, TaskDiscard, TaskRestore
 
 
 def create_task(session: Session, data: TaskCreate) -> Task:
@@ -32,6 +32,7 @@ def list_tasks(
     user_id: Optional[str] = None,
     goal_id: Optional[int] = None,
     completion_status: Optional[CompletionStatusEnum] = None,
+    include_discarded: bool = False,
 ) -> List[Task]:
     statement = select(Task)
     if user_id:
@@ -40,6 +41,9 @@ def list_tasks(
         statement = statement.where(Task.goal_id == goal_id)
     if completion_status:
         statement = statement.where(Task.completion_status == completion_status)
+    elif not include_discarded:
+        # Exclude discarded tasks by default unless specifically requested
+        statement = statement.where(Task.completion_status != CompletionStatusEnum.DISCARDED)
     statement = statement.offset(skip).limit(limit)
     return session.exec(statement).all()
 
@@ -73,6 +77,58 @@ def update_task(session: Session, task_id: int, update: TaskUpdate) -> Task:
     return task
 
 
+def discard_task(session: Session, task_id: int, discard_data: TaskDiscard) -> Task:
+    """Discard a task with a message explaining why it was discarded."""
+    task = session.get(Task, task_id)
+    if not task:
+        raise LookupError("Task not found")
+    
+    if task.completion_status == CompletionStatusEnum.DISCARDED:
+        raise ValueError("Task is already discarded")
+    
+    task.completion_status = CompletionStatusEnum.DISCARDED
+    task.discard_message = discard_data.discard_message
+    task.updated_at = datetime.now()
+    
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+def restore_task(session: Session, task_id: int, restore_data: Optional[TaskRestore] = None) -> Task:
+    """Restore a discarded task back to pending status."""
+    task = session.get(Task, task_id)
+    if not task:
+        raise LookupError("Task not found")
+    
+    if task.completion_status != CompletionStatusEnum.DISCARDED:
+        raise ValueError("Task is not discarded")
+    
+    task.completion_status = CompletionStatusEnum.PENDING
+    task.discard_message = None
+    task.updated_at = datetime.now()
+    
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+
+def list_discarded_tasks(
+    session: Session,
+    user_id: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[Task]:
+    """List only discarded tasks."""
+    statement = select(Task).where(Task.completion_status == CompletionStatusEnum.DISCARDED)
+    if user_id:
+        statement = statement.where(Task.user_id == user_id)
+    statement = statement.offset(skip).limit(limit)
+    return session.exec(statement).all()
+
+
 def delete_task(session: Session, task_id: int) -> None:
     task = session.get(Task, task_id)
     if not task:
@@ -81,23 +137,30 @@ def delete_task(session: Session, task_id: int) -> None:
     session.commit()
 
 
-def list_user_tasks(session: Session, user_id: str) -> List[Task]:
-    return session.exec(select(Task).where(Task.user_id == user_id)).all()
+def list_user_tasks(session: Session, user_id: str, include_discarded: bool = False) -> List[Task]:
+    statement = select(Task).where(Task.user_id == user_id)
+    if not include_discarded:
+        statement = statement.where(Task.completion_status != CompletionStatusEnum.DISCARDED)
+    return session.exec(statement).all()
 
 
-def list_user_today_tasks(session: Session, user_id: str) -> List[Task]:
+def list_user_today_tasks(session: Session, user_id: str, include_discarded: bool = False) -> List[Task]:
     # Since we removed deadline, this function now returns all user tasks
     # You may want to implement different logic based on your requirements
-    return session.exec(select(Task).where(Task.user_id == user_id)).all()
+    statement = select(Task).where(Task.user_id == user_id)
+    if not include_discarded:
+        statement = statement.where(Task.completion_status != CompletionStatusEnum.DISCARDED)
+    return session.exec(statement).all()
 
 
-def list_user_pending_tasks(session: Session, user_id: str) -> List[Task]:
-    return session.exec(
-        select(Task).where(
-            Task.user_id == user_id,
-            Task.completion_status.in_([CompletionStatusEnum.PENDING, CompletionStatusEnum.IN_PROGRESS]),
-        )
-    ).all()
+def list_user_pending_tasks(session: Session, user_id: str, include_discarded: bool = False) -> List[Task]:
+    statement = select(Task).where(
+        Task.user_id == user_id,
+        Task.completion_status.in_([CompletionStatusEnum.PENDING, CompletionStatusEnum.IN_PROGRESS]),
+    )
+    if not include_discarded:
+        statement = statement.where(Task.completion_status != CompletionStatusEnum.DISCARDED)
+    return session.exec(statement).all()
 
 
 def complete_task(session: Session, task_id: int) -> Task:

@@ -35,6 +35,7 @@ class Task(TimestampModel, table=True):
     scheduled_for_date: Optional[date] = Field(default=None)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    discard_message: Optional[str] = None
     
     # Relationships
     user: Optional["User"] = Relationship(back_populates="tasks")
