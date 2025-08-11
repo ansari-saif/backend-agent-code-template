@@ -7,6 +7,8 @@ from . import job_metrics
 from . import ai_service
 from . import day_log
 from . import log
+from . import prompt
+from . import websocket
 
 __all__ = [
     "user",
@@ -18,4 +20,6 @@ __all__ = [
     "ai_service",
     "day_log",
     "log",
+    "prompt",
+    "websocket",
 ]

@@ -328,4 +328,15 @@ def test_prompt(session: Session, test_user, sample_prompt_data):
     session.refresh(prompt)
     return prompt
 
+
+@pytest.fixture
+def test_ai_context(session: Session, test_user, sample_ai_context_data):
+    """Create a test AI context in the database."""
+    from app.models.ai_context import AIContext
+    ai_context = AIContext(**sample_ai_context_data)
+    session.add(ai_context)
+    session.commit()
+    session.refresh(ai_context)
+    return ai_context
+
 # Removed test_todo fixture (Todo module deprecated)

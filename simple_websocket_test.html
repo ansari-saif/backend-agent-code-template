@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; }
+        button { padding: 10px; margin: 5px; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; }
+        .message { margin: 5px 0; padding: 5px; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple WebSocket Test</h1>
+        
+        <div>
+            <input type="text" id="userId" value="5976080378" placeholder="User ID">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+        </div>
+        
+        <div>
+            <button onclick="ping()">Ping</button>
+            <button onclick="requestMotivation()">Request Motivation</button>
+        </div>
+        
+        <div>
+            <h3>Messages:</h3>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        
+        function addMessage(text) {
+            const messages = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.textContent = new Date().toLocaleTimeString() + ': ' + text;
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        function connect() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('Please enter a user ID');
+                return;
+            }
+            
+            ws = new WebSocket(`ws://localhost:8000/api/v1/ws/${userId}`);
+            
+            ws.onopen = function() {
+                addMessage('Connected!');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                addMessage(`Received: ${JSON.stringify(data, null, 2)}`);
+            };
+            
+            ws.onclose = function() {
+                addMessage('Disconnected');
+                ws = null;
+            };
+            
+            ws.onerror = function(error) {
+                addMessage('Error: ' + error);
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+        
+        function ping() {
+            if (!ws) {
+                addMessage('Not connected!');
+                return;
+            }
+            
+            const message = {
+                type: 'ping',
+                user_id: document.getElementById('userId').value
+            };
+            
+            ws.send(JSON.stringify(message));
+            addMessage('Sent ping');
+        }
+        
+        function requestMotivation() {
+            if (!ws) {
+                addMessage('Not connected!');
+                return;
+            }
+            
+            const message = {
+                type: 'motivation_requested',
+                current_challenge: 'Feeling overwhelmed with work',
+                stress_level: 7,
+                user_id: document.getElementById('userId').value
+            };
+            
+            ws.send(JSON.stringify(message));
+            addMessage('Sent motivation request');
+        }
+    </script>
+</body>
+</html>
