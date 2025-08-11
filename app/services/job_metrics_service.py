@@ -1,7 +1,6 @@
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from datetime import datetime, UTC
-
 from sqlmodel import Session, select
 
 from app.models.job_metrics import JobMetrics
@@ -49,7 +48,7 @@ def update_job_metrics(session: Session, metric_id: int, update: JobMetricsUpdat
     if any(field in data for field in ["startup_revenue", "current_salary", "monthly_expenses"]):
         if job_metrics.startup_revenue and job_metrics.current_salary and job_metrics.monthly_expenses:
             job_metrics.quit_readiness_score = _calculate_quit_readiness_score(job_metrics)
-    job_metrics.last_updated = datetime.utcnow()
+    job_metrics.last_updated = datetime.now()
     session.add(job_metrics)
     session.commit()
     session.refresh(job_metrics)
@@ -79,7 +78,7 @@ def update_financial_metrics(session: Session, user_id: str, financial_data: dic
     if job_metrics.startup_revenue and job_metrics.current_salary and job_metrics.monthly_expenses:
         job_metrics.quit_readiness_score = _calculate_quit_readiness_score(job_metrics)
         job_metrics.runway_months = float(job_metrics.startup_revenue / job_metrics.monthly_expenses) if job_metrics.monthly_expenses > 0 else None
-    job_metrics.last_updated = datetime.utcnow()
+    job_metrics.last_updated = datetime.now()
     session.add(job_metrics)
     session.commit()
     session.refresh(job_metrics)
@@ -169,7 +168,7 @@ async def analyze_job_metrics_with_ai(session: Session, metric_id: int) -> JobMe
         ).model_dump()
 
         # Update the metrics
-        job_metrics.last_updated = datetime.now(UTC)
+        job_metrics.last_updated = datetime.now()
         session.add(job_metrics)
         session.commit()
         session.refresh(job_metrics)

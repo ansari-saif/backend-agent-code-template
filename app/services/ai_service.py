@@ -5,9 +5,9 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, date, timedelta
 from app.models.user import User
 from app.models.goal import Goal
-from app.models.task import Task
+from app.models.task import Task, CompletionStatusEnum
 from app.schemas.goal import StatusEnum
-from app.schemas.task import CompletionStatusEnum, TaskPriorityEnum, EnergyRequiredEnum
+from app.schemas.task import TaskPriorityEnum, EnergyRequiredEnum
 from app.models.progress_log import ProgressLog
 from app.models.ai_context import AIContext
 from app.models.job_metrics import JobMetrics
@@ -559,7 +559,7 @@ class AIService:
         """
         try:
             # Use today's date if not specified
-            target_date = date or datetime.utcnow().date()
+            target_date = date or datetime.now().date()
 
             # Day boundaries
             day_start = datetime.combine(target_date, datetime.min.time())
@@ -706,7 +706,7 @@ class AIService:
         using user's tasks and notes for the given day.
         """
         try:
-            day_date = target_date or datetime.utcnow().date()
+            day_date = target_date or datetime.now().date()
 
             # Gather context for the day
             start = datetime.combine(day_date, datetime.min.time())
@@ -786,7 +786,7 @@ class AIService:
         """
         try:
             # Collect very lightweight context for AI prompt (recent tasks / logs counts)
-            today = datetime.utcnow().date()
+            today = datetime.now().date()
             start = datetime.combine(today - timedelta(days=7), datetime.min.time())
             end = datetime.combine(today + timedelta(days=1), datetime.min.time())
 

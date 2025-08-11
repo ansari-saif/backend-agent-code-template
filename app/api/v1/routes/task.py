@@ -43,7 +43,9 @@ def create_task(
         estimated_duration=task.estimated_duration,
         actual_duration=task.actual_duration,
         energy_required=task.energy_required,
-        scheduled_for_date=task.scheduled_for_date
+        scheduled_for_date=task.scheduled_for_date,
+        started_at=task.started_at,
+        completed_at=task.completed_at
     )
     session.add(db_task)
     session.commit()
@@ -229,18 +231,16 @@ def complete_task(
     session: Session = Depends(get_session)
 ):
     """Mark a task as completed."""
-    task = session.get(Task, task_id)
-    if not task:
+    from app.services.task_service import complete_task as complete_task_service
+    
+    try:
+        task = complete_task_service(session, task_id)
+        return task
+    except LookupError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
-    
-    task.completion_status = CompletionStatusEnum.COMPLETED
-    session.add(task)
-    session.commit()
-    session.refresh(task)
-    return task
 
 
 @router.post("/bulk", response_model=List[schemas.TaskResponse], status_code=status.HTTP_201_CREATED)

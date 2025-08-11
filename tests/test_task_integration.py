@@ -831,3 +831,86 @@ class TestTaskIntegration:
         }
         response = client.post("/tasks/", json=null_date_task)
         assert response.status_code == 201
+
+    def test_task_completion_with_actual_duration_calculation(self, client, session: Session, test_user, test_goal):
+        """Test that actual_duration is calculated when completing a task with started_at."""
+        
+        # Create a task with started_at timestamp using system timezone
+        task_data = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Task to test duration calculation",
+            "priority": TaskPriorityEnum.HIGH,
+            "estimated_duration": 60,  # 1 hour estimated
+            "started_at": (datetime.now() - timedelta(minutes=45)).isoformat()  # Started 45 minutes ago
+        }
+        
+        response = client.post("/tasks/", json=task_data)
+        assert response.status_code == 201
+        created_task = response.json()
+        task_id = created_task["task_id"]
+        
+        # Verify task was created with started_at but no actual_duration
+        assert created_task["started_at"] is not None
+        assert created_task["actual_duration"] is None
+        assert created_task["completed_at"] is None
+        
+        # Complete the task
+        response = client.patch(f"/tasks/{task_id}/complete")
+        assert response.status_code == 200
+        completed_task = response.json()
+        
+        # Verify task is completed
+        assert completed_task["completion_status"] == CompletionStatusEnum.COMPLETED
+        assert completed_task["completed_at"] is not None
+        
+        # Verify actual_duration was calculated (should be approximately 45 minutes)
+        assert completed_task["actual_duration"] is not None
+        assert completed_task["actual_duration"] >= 40  # Allow some tolerance for test timing
+        assert completed_task["actual_duration"] <= 50  # Allow some tolerance for test timing
+        
+        # Test completing a task without started_at (should not calculate duration)
+        task_data_no_start = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Task without started_at",
+            "priority": TaskPriorityEnum.MEDIUM,
+            "estimated_duration": 30
+        }
+        
+        response = client.post("/tasks/", json=task_data_no_start)
+        assert response.status_code == 201
+        task_id_no_start = response.json()["task_id"]
+        
+        # Complete the task
+        response = client.patch(f"/tasks/{task_id_no_start}/complete")
+        assert response.status_code == 200
+        completed_task_no_start = response.json()
+        
+        # Verify task is completed but actual_duration remains None
+        assert completed_task_no_start["completion_status"] == CompletionStatusEnum.COMPLETED
+        assert completed_task_no_start["completed_at"] is not None
+        assert completed_task_no_start["actual_duration"] is None
+        
+        # Test completing a task that already has actual_duration (should not overwrite)
+        task_data_with_duration = {
+            "user_id": test_user.telegram_id,
+            "goal_id": test_goal.goal_id,
+            "description": "Task with existing actual_duration",
+            "priority": TaskPriorityEnum.LOW,
+            "actual_duration": 120,  # Already set to 2 hours
+            "started_at": (datetime.now() - timedelta(minutes=30)).isoformat()
+        }
+        
+        response = client.post("/tasks/", json=task_data_with_duration)
+        assert response.status_code == 201
+        task_id_with_duration = response.json()["task_id"]
+        
+        # Complete the task
+        response = client.patch(f"/tasks/{task_id_with_duration}/complete")
+        assert response.status_code == 200
+        completed_task_with_duration = response.json()
+        
+        # Verify actual_duration was not overwritten
+        assert completed_task_with_duration["completion_status"] == CompletionStatusEnum.COMPLETED
+        assert completed_task_with_duration["actual_duration"] == 120  # Should remain unchanged

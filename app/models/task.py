@@ -3,13 +3,14 @@ from typing import Optional, TYPE_CHECKING
 from datetime import datetime, date
 from sqlalchemy import Column, String, Enum
 from app.schemas.task import TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
+from app.models import TimestampModel
 
 if TYPE_CHECKING:
     from app.models.user import User
     from app.models.goal import Goal
 
 
-class Task(SQLModel, table=True):
+class Task(TimestampModel, table=True):
     __tablename__ = "tasks"
     
     task_id: Optional[int] = Field(default=None, primary_key=True)
@@ -32,8 +33,6 @@ class Task(SQLModel, table=True):
         sa_column=Column(Enum(EnergyRequiredEnum, name='energyrequiredenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
     scheduled_for_date: Optional[date] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     

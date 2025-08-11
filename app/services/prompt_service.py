@@ -1,13 +1,13 @@
-from datetime import datetime
-import os
 from typing import Optional
+from datetime import date, datetime
+import os
 import google.generativeai as genai
 from sqlmodel import Session, select
 
 from app.models.prompt import Prompt
+from app.models.task import Task
 from app.models.log import Log
 from app.schemas.prompt import PromptCreate, PromptUpdate
-from app.models.task import Task
 
 class PromptService:
     def __init__(self):
@@ -44,10 +44,10 @@ class PromptService:
                 raise ValueError("API Error")
 
             # Build enriched context: today's tasks and today's prompts
-            # Use UTC-based "today" to match TimestampModel utcnow defaults
-            today_utc = datetime.utcnow().date()
-            day_start = datetime.combine(today_utc, datetime.min.time())
-            day_end = datetime.combine(today_utc, datetime.max.time())
+            # Use system default timezone for "today"
+            today = datetime.now().date()
+            day_start = datetime.combine(today, datetime.min.time())
+            day_end = datetime.combine(today, datetime.max.time())
 
             # Today's tasks for the user
             tasks_stmt = select(Task).where(
@@ -85,7 +85,7 @@ class PromptService:
             response = model.generate_content(system_context)
 
             prompt.response_text = (getattr(response, "text", None) or "").strip()
-            prompt.completed_at = datetime.utcnow()
+            prompt.completed_at = datetime.now()
 
             session.add(prompt)
             session.commit()

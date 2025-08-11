@@ -1,16 +1,14 @@
-from sqlmodel import Session, select
-from datetime import datetime
-import json
 from typing import List, Optional
+from datetime import date, datetime
+from sqlmodel import Session, select
+import json
 
 from app.models.ai_context import AIContext
 from app.models.user import User
 from app.models.goal import Goal
 from app.models.task import Task
-from app.models.job_metrics import JobMetrics
 from app.models.progress_log import ProgressLog
 from app.schemas.ai_context import AIContextCreate, AIContextUpdate
-from app.services.ai_service import AIService
 
 
 async def create_ai_context(session: Session, ai_context_data: AIContextCreate) -> AIContext:
@@ -162,7 +160,7 @@ def update_ai_context(
     for key, value in update_data.items():
         setattr(ai_context, key, value)
     
-    ai_context.last_updated = datetime.utcnow()
+    ai_context.last_updated = datetime.now()
     session.add(ai_context)
     session.commit()
     session.refresh(ai_context)

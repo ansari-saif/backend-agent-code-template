@@ -1,10 +1,14 @@
 from datetime import datetime
 from sqlmodel import SQLModel, Field
 
+def now():
+    """Get current datetime using system default timezone"""
+    return datetime.now()
+
 class TimestampModel(SQLModel):
     """Base model class that automatically includes created_at and updated_at fields."""
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=now, nullable=False)
+    updated_at: datetime = Field(default_factory=now, nullable=False)
 
 from .user import User
 from .goal import Goal
