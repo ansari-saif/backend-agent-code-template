@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Diary application provides real-time WebSocket communication for instant updates, motivation messages, and interactive features. The WebSocket endpoint supports user-specific connections and handles various message types.
+The Diary application provides a one-way WebSocket communication system for sending messages to connected users. The WebSocket endpoint accepts connections but doesn't process incoming messages - it's designed for server-to-client communication only.
 
 ## WebSocket Endpoint
 
@@ -10,9 +10,11 @@ The Diary application provides real-time WebSocket communication for instant upd
 
 **Protocol:** WebSocket (ws:// or wss:// for secure connections)
 
+**Mode:** Send-only (server to client)
+
 ## Connection
 
-### Connect to WebSocket
+### Connect to WebSocket (Receive Only)
 
 ```javascript
 // JavaScript/Node.js
@@ -22,7 +24,7 @@ const user_id = "123456789";
 const ws = new WebSocket(`ws://localhost:8000/api/v1/ws/${user_id}`);
 
 ws.on('open', function open() {
-    console.log('Connected to WebSocket');
+    console.log('Connected to WebSocket (receive-only mode)');
 });
 
 ws.on('message', function message(data) {
@@ -45,13 +47,9 @@ async def connect_websocket(user_id):
     uri = f"ws://localhost:8000/api/v1/ws/{user_id}"
     
     async with websockets.connect(uri) as websocket:
-        print(f"Connected to WebSocket for user {user_id}")
+        print(f"Connected to WebSocket for user {user_id} (receive-only mode)")
         
-        # Send a ping message
-        ping_message = {"type": "ping"}
-        await websocket.send(json.dumps(ping_message))
-        
-        # Listen for messages
+        # Listen for messages from server
         async for message in websocket:
             response = json.loads(message)
             print(f"Received: {response}")
@@ -60,68 +58,53 @@ async def connect_websocket(user_id):
 asyncio.run(connect_websocket("123456789"))
 ```
 
-## Message Types
+## Sending Messages via HTTP Endpoints
 
-### 1. Ping/Pong
+### Send Notification
 
-**Send:**
+**POST** `/api/v1/ws/notification`
+
+Send a simple notification to all connected users:
+
 ```json
 {
-  "type": "ping"
+  "message": "Server maintenance scheduled for tomorrow"
 }
 ```
 
-**Receive:**
+**Response:**
 ```json
 {
-  "type": "pong",
-  "user_id": "123456789",
-  "message": "Pong!"
+  "status": "success",
+  "message": "Notification sent to 3 users",
+  "sent_count": 3,
+  "total_connections": 3,
+  "disconnected_users": 0
 }
 ```
 
-### 2. Motivation Request
-
-**Send:**
+**What gets sent to WebSocket clients:**
 ```json
 {
-  "type": "motivation_requested",
-  "current_challenge": "Working on a difficult feature",
-  "stress_level": 7
+  "message": "Server maintenance scheduled for tomorrow"
 }
 ```
 
-**Receive:**
+## WebSocket Status Endpoint
+
+**GET** `/api/v1/ws/status`
+
+Returns the current WebSocket connection status:
+
 ```json
 {
-  "type": "motivation_generated",
-  "user_id": "123456789",
-  "motivation_text": "You're doing great! Keep pushing forward! 💪",
-  "current_challenge": "Working on a difficult feature",
-  "stress_level": 7
+  "connected_users": 5,
+  "status": "active",
+  "active_user_ids": ["123456789", "987654321", "555666777"]
 }
 ```
 
-### 3. Echo (Default)
-
-**Send:**
-```json
-{
-  "type": "custom_message",
-  "data": "Any custom data"
-}
-```
-
-**Receive:**
-```json
-{
-  "type": "echo",
-  "user_id": "123456789",
-  "message": "Received: {\"type\": \"custom_message\", \"data\": \"Any custom data\"}"
-}
-```
-
-## Complete JavaScript Client Example
+## Complete JavaScript Client Example (Receive Only)
 
 ```javascript
 class DiaryWebSocketClient {
@@ -139,7 +122,7 @@ class DiaryWebSocketClient {
             
             this.ws.onopen = () => {
                 this.isConnected = true;
-                console.log('WebSocket connected');
+                console.log('WebSocket connected (receive-only mode)');
                 resolve();
             };
             
@@ -168,25 +151,6 @@ class DiaryWebSocketClient {
         }
     }
 
-    sendMessage(message) {
-        if (!this.isConnected) {
-            throw new Error('WebSocket not connected');
-        }
-        this.ws.send(JSON.stringify(message));
-    }
-
-    ping() {
-        this.sendMessage({ type: 'ping' });
-    }
-
-    requestMotivation(currentChallenge = '', stressLevel = 5) {
-        this.sendMessage({
-            type: 'motivation_requested',
-            current_challenge: currentChallenge,
-            stress_level: stressLevel
-        });
-    }
-
     handleMessage(message) {
         const handler = this.messageHandlers.get(message.type);
         if (handler) {
@@ -200,17 +164,11 @@ class DiaryWebSocketClient {
         this.messageHandlers.set(type, handler);
     }
 
-    onPong(handler) {
-        this.onMessage('pong', handler);
+    onNotification(handler) {
+        this.onMessage('notification', handler);
     }
 
-    onMotivation(handler) {
-        this.onMessage('motivation_generated', handler);
-    }
 
-    onEcho(handler) {
-        this.onMessage('echo', handler);
-    }
 }
 
 // Usage Example
@@ -218,40 +176,20 @@ async function main() {
     const client = new DiaryWebSocketClient('123456789');
     
     // Set up message handlers
-    client.onPong((message) => {
-        console.log('Pong received:', message.message);
+    client.onNotification((message) => {
+        console.log('Notification received:', message.message);
     });
     
-    client.onMotivation((message) => {
-        console.log('Motivation:', message.motivation_text);
-        console.log('Challenge:', message.current_challenge);
-        console.log('Stress Level:', message.stress_level);
-    });
-    
-    client.onEcho((message) => {
-        console.log('Echo:', message.message);
-    });
+
     
     try {
         // Connect to WebSocket
         await client.connect();
         
-        // Send ping
-        client.ping();
-        
-        // Request motivation
-        client.requestMotivation('Working on API documentation', 6);
-        
-        // Send custom message
-        client.sendMessage({
-            type: 'custom_message',
-            data: 'Hello from client!'
-        });
-        
-        // Keep connection alive for 10 seconds
+        // Keep connection alive for 30 seconds
         setTimeout(() => {
             client.disconnect();
-        }, 10000);
+        }, 30000);
         
     } catch (error) {
         console.error('Error:', error);
@@ -261,7 +199,7 @@ async function main() {
 main();
 ```
 
-## Python Client Example
+## Python Client Example (Receive Only)
 
 ```python
 import asyncio
@@ -280,31 +218,13 @@ class DiaryWebSocketClient:
         """Connect to WebSocket"""
         uri = f"{self.base_url}/api/v1/ws/{self.user_id}"
         self.websocket = await websockets.connect(uri)
-        print(f"Connected to WebSocket for user {self.user_id}")
+        print(f"Connected to WebSocket for user {self.user_id} (receive-only mode)")
     
     async def disconnect(self):
         """Disconnect from WebSocket"""
         if self.websocket:
             await self.websocket.close()
             self.websocket = None
-    
-    async def send_message(self, message: Dict[str, Any]):
-        """Send a message to the server"""
-        if not self.websocket:
-            raise Exception("WebSocket not connected")
-        await self.websocket.send(json.dumps(message))
-    
-    async def ping(self):
-        """Send ping message"""
-        await self.send_message({"type": "ping"})
-    
-    async def request_motivation(self, current_challenge: str = "", stress_level: int = 5):
-        """Request motivation message"""
-        await self.send_message({
-            "type": "motivation_requested",
-            "current_challenge": current_challenge,
-            "stress_level": stress_level
-        })
     
     def on_message(self, message_type: str, handler: Callable):
         """Register message handler"""
@@ -329,10 +249,6 @@ class DiaryWebSocketClient:
         try:
             await self.connect()
             
-            # Send initial messages
-            await self.ping()
-            await self.request_motivation("Working on integration", 7)
-            
             # Listen for messages
             await asyncio.wait_for(self.listen(), timeout=duration)
             
@@ -348,40 +264,20 @@ async def main():
     client = DiaryWebSocketClient("123456789")
     
     # Set up message handlers
-    def on_pong(message):
-        print(f"Pong received: {message['message']}")
+    def on_notification(message):
+        print(f"Notification: {message['message']}")
     
-    def on_motivation(message):
-        print(f"Motivation: {message['motivation_text']}")
-        print(f"Challenge: {message['current_challenge']}")
-        print(f"Stress Level: {message['stress_level']}")
+
     
-    def on_echo(message):
-        print(f"Echo: {message['message']}")
+    client.on_message("notification", on_notification)
+
     
-    client.on_message("pong", on_pong)
-    client.on_message("motivation_generated", on_motivation)
-    client.on_message("echo", on_echo)
-    
-    # Run client for 10 seconds
-    await client.run(10)
+    # Run client for 30 seconds
+    await client.run(30)
 
 # Run the example
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-## WebSocket Status Endpoint
-
-**GET** `/api/v1/ws/status`
-
-Returns the current WebSocket connection status:
-
-```json
-{
-  "connected_users": 5,
-  "status": "active"
-}
 ```
 
 ## Error Handling
@@ -391,10 +287,9 @@ Returns the current WebSocket connection status:
 - **Authentication**: User ID validation (if implemented)
 - **Network Issues**: Handle reconnection logic
 
-### Message Errors
-- **Invalid JSON**: Messages must be valid JSON
-- **Missing Type**: Messages should include a `type` field
-- **Server Errors**: Handle server-side exceptions
+### Server Errors
+- **No Active Connections**: 404 error when no users are connected
+- **Message Send Failures**: Automatic cleanup of disconnected users
 
 ## Troubleshooting
 
@@ -414,62 +309,66 @@ Returns the current WebSocket connection status:
 # Test status endpoint
 curl http://localhost:8000/api/v1/ws/status
 
-# Test WebSocket with wscat
+# Test WebSocket with wscat (receive-only)
 wscat -c ws://localhost:8000/api/v1/ws/123456789
 
-# Send test messages
-{"type": "ping"}
-{"type": "motivation_requested", "current_challenge": "Testing", "stress_level": 5}
+# Send notification via HTTP endpoint
+curl -X POST http://localhost:8000/api/v1/ws/notification \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Test notification"}'
 ```
 
 ## Best Practices
 
 1. **Reconnection Logic**: Implement automatic reconnection on disconnect
-2. **Heartbeat**: Use ping/pong to keep connections alive
-3. **Error Handling**: Handle connection and message errors gracefully
-4. **Message Validation**: Validate message format before sending
-5. **Resource Cleanup**: Properly close connections when done
+2. **Error Handling**: Handle connection and message errors gracefully
+3. **Resource Cleanup**: Properly close connections when done
+4. **Message Validation**: Validate message format before sending via HTTP
+5. **Rate Limiting**: Implement rate limiting for HTTP message sending
 
 ## Security Considerations
 
 - **User Authentication**: Validate user_id on connection
-- **Message Validation**: Sanitize incoming messages
-- **Rate Limiting**: Implement rate limiting for message sending
+- **Message Validation**: Sanitize incoming messages via HTTP endpoints
+- **Rate Limiting**: Implement rate limiting for HTTP message sending
 - **Connection Limits**: Limit number of connections per user
 
 ## Testing
-
-### Test Connection
-```bash
-# Using wscat (install with: npm install -g wscat)
-wscat -c ws://localhost:8000/api/v1/ws/123456789
-
-# Send a ping message
-{"type": "ping"}
-
-# Request motivation
-{"type": "motivation_requested", "current_challenge": "Testing", "stress_level": 5}
-```
 
 ### Test Status Endpoint
 ```bash
 curl http://localhost:8000/api/v1/ws/status
 ```
 
+### Test Notification Endpoint
+```bash
+curl -X POST http://localhost:8000/api/v1/ws/notification \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Test notification"}'
+```
+
 ## Integration with Task Management
 
-The WebSocket can be extended to provide real-time updates for:
+The WebSocket can be used to send real-time updates for:
 
 - Task completion notifications
 - Goal progress updates
 - AI-generated motivation messages
+- System announcements and alerts
 - Real-time collaboration features
 - Progress tracking updates
 
 ## Example Use Cases
 
-1. **Real-time Motivation**: Request motivation when feeling stuck
-2. **Task Updates**: Receive notifications when tasks are completed
+1. **System Notifications**: Broadcast important announcements to all users
+2. **Task Updates**: Send notifications when tasks are completed
 3. **Progress Tracking**: Real-time progress updates
-4. **Collaboration**: Real-time updates for team members
-5. **AI Integration**: Real-time AI-generated insights and recommendations
+4. **AI Integration**: Send AI-generated insights and recommendations
+5. **Maintenance Alerts**: Notify users about system maintenance
+6. **Feature Announcements**: Announce new features or updates
+
+## Message Types
+
+The system supports notifications sent via the `/notification` endpoint:
+
+- **notification**: Simple notifications with just a message

@@ -11,7 +11,6 @@ from app.api.v1.routes import day_log
 from app.api.v1.routes import log
 from app.api.v1.routes import prompt
 from app.api.v1.routes import websocket
-from app.api.v1.routes import motivation
 from app.core.database import create_db_and_tables
 from fastapi_mcp import FastApiMCP
 
@@ -47,7 +46,6 @@ app.include_router(day_log.router, prefix="/day-logs", tags=["day-logs"])
 app.include_router(log.router, prefix="/log", tags=["log"])
 app.include_router(prompt.router, prefix="/prompts", tags=["prompts"])
 app.include_router(websocket.router, prefix="/api/v1/ws", tags=["websocket"])
-app.include_router(motivation.router, prefix="/motivation", tags=["motivation"])
 
 @app.get("/")
 def read_root():
