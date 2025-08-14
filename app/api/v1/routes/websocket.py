@@ -1,7 +1,12 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
 import logging
 import json
 from typing import Dict, Any
+from sqlmodel import Session
+
+from app.core.database import get_session
+from app.services.prompt_service import PromptService
+from app.schemas.prompt import PromptCreate
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -9,31 +14,112 @@ router = APIRouter()
 # Dictionary to store active WebSocket connections
 connections: Dict[str, WebSocket] = {}
 
+async def handle_chat_message(websocket: WebSocket, user_id: str, message: Dict[str, Any]):
+    """Handle chat messages - broadcast to other users"""
+    # Broadcast message to other connected users
+    chat_message = {
+        "type": "chat",
+        "user_id": user_id,
+        "message": message.get("message", ""),
+        "timestamp": message.get("timestamp")
+    }
+    
+    # Send to all connected users (including sender for confirmation)
+    logger.info(f"Broadcasting to {len(connections)} connected users: {list(connections.keys())}")
+    for other_user_id, other_websocket in connections.items():
+        try:
+            await other_websocket.send_text(json.dumps(chat_message))
+            logger.info(f"Chat message sent to user {other_user_id}")
+        except Exception as e:
+            logger.error(f"Failed to send chat message to user {other_user_id}: {str(e)}")
+
+async def handle_prompt_message(websocket: WebSocket, user_id: str, message: Dict[str, Any], prompt_service: PromptService):
+    """Handle prompt messages - create and process with AI"""
+    # Validate required fields
+    if "message" not in message:
+        error_response = {
+            "type": "error",
+            "message": "Missing required field: message"
+        }
+        await websocket.send_text(json.dumps(error_response))
+        return
+    
+    # Create prompt data
+    prompt_data = PromptCreate(
+        user_id=user_id,
+        prompt_text=message["message"]
+    )
+    
+    # Get database session
+    session = next(get_session())
+    
+    try:
+        # First create the prompt
+        prompt = await prompt_service.create_prompt(session, prompt_data)
+        logger.info(f"Created prompt {prompt.prompt_id} for user {user_id}")
+        
+        # Then process it with Gemini
+        processed_prompt = await prompt_service.process_prompt(session, prompt)
+        logger.info(f"Processed prompt {prompt.prompt_id} for user {user_id}")
+        
+        # Send the processed response
+        success_response = {
+            "message": processed_prompt.response_text
+        }
+        await websocket.send_text(json.dumps(success_response))
+        
+    except ValueError as e:
+        error_response = {
+            "type": "error",
+            "message": f"Processing error: {str(e)}"
+        }
+        await websocket.send_text(json.dumps(error_response))
+        logger.error(f"Error processing prompt for user {user_id}: {str(e)}")
+    
+    finally:
+        session.close()
+
 @router.websocket("/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     """
-    WebSocket endpoint for one-way communication (send only).
+    WebSocket endpoint for two-way communication (chat and prompt support).
     
     Args:
         websocket: WebSocket connection object
         user_id: Unique identifier for the user
     
     Features:
-        - Accepts connections but doesn't process incoming messages
-        - Maintains connection for potential future use
+        - Accepts connections and processes incoming messages
+        - Handles chat messages (broadcasts to other users)
+        - Handles prompt messages (creates and processes with AI)
         - Handles connection lifecycle
     """
     await websocket.accept()
     connections[user_id] = websocket
-    logger.info(f"User {user_id} connected to WebSocket (send-only mode)")
+    logger.info(f"User {user_id} connected to WebSocket (chat + prompt mode)")
+    
+    # Initialize prompt service
+    prompt_service = PromptService()
     
     try:
-        # Keep connection alive without processing messages
+        # Process incoming messages for chat and prompts
         while True:
-            # Just keep the connection open without receiving messages
-            await websocket.receive_text()
-            # Discard any received messages
-            logger.debug(f"Discarded message from user {user_id}")
+            message_data = await websocket.receive_text()
+            logger.info(f"Raw message received from user {user_id}: {message_data}")
+            
+            try:
+                message = json.loads(message_data)
+                logger.info(f"Parsed message from user {user_id}: {message}")
+                await handle_prompt_message(websocket, user_id, message, prompt_service)
+               
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON from user {user_id}: {message_data}")
+                # Send error message back to sender
+                error_message = {
+                    "type": "error",
+                    "message": "Invalid message format. Please send valid JSON."
+                }
+                await websocket.send_text(json.dumps(error_message))
                 
     except WebSocketDisconnect:
         logger.info(f"User {user_id} disconnected from WebSocket")
