@@ -25,6 +25,8 @@ def _within_next_30_minute(task: Task, *, now_ist: datetime) -> bool:
         return False
     if task.completion_status == CompletionStatusEnum.COMPLETED:
         return False
+    if task.actual_duration:
+        task.scheduled_for_time = task.scheduled_for_time + timedelta(minutes=task.actual_duration)
     task_dt = datetime.combine(task.scheduled_for_date, task.scheduled_for_time, IST)
     return now_ist <= task_dt < (now_ist + timedelta(minutes=30))
 
