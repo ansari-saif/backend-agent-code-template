@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.routes import user
 from app.api.v1.routes import goal
@@ -12,6 +13,8 @@ from app.api.v1.routes import log
 from app.api.v1.routes import prompt
 from app.api.v1.routes import websocket
 from app.core.database import create_db_and_tables
+from app.services.scheduler_service import SchedulerService
+from app.services.reminder_service import task_reminder_job
 from fastapi_mcp import FastApiMCP
 
 app = FastAPI(
@@ -29,10 +32,16 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Create database tables on startup
+scheduler_service = SchedulerService()
+
+# Create database tables and start scheduler on startup
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    if os.getenv("ENABLE_SCHEDULER", "false").lower() in {"1", "true", "yes"}:
+        scheduler_service.start()
+        # Every minute, check for due reminders in IST
+        scheduler_service.add_cron_job(task_reminder_job, id="task_reminders", second="0")
 
 # Include all API routes
 app.include_router(user.router, prefix="/users", tags=["users"])
@@ -78,6 +87,12 @@ mcp = FastApiMCP(
 )
 
 mcp.mount()
+
+# Graceful shutdown
+@app.on_event("shutdown")
+def on_shutdown():
+    if scheduler_service.scheduler:
+        scheduler_service.shutdown()
 
 if __name__ == "__main__":
     import uvicorn

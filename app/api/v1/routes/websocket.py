@@ -145,9 +145,7 @@ async def get_websocket_status():
         "status": "active",
         "active_user_ids": list(connections.keys())
     }
-
-@router.post("/notification")
-async def send_notification(notification_data: Dict[str, Any], session: Session = Depends(get_session)):
+async def send_notification_service(notification_data: Dict[str, Any], session: Session = Depends(get_session)):
     """
     Send a notification to all connected WebSocket users via HTTP endpoint.
     
@@ -161,6 +159,9 @@ async def send_notification(notification_data: Dict[str, Any], session: Session 
     if not connections:
         raise HTTPException(status_code=404, detail="No active WebSocket connections")
     
+    # Optional: filter by user_id to send to a specific user
+    target_user_id = notification_data.get("user_id")
+    
     # Prepare notification message with only message key
     notification_message = notification_data.get("message", "New notification")
     notification = {
@@ -172,6 +173,8 @@ async def send_notification(notification_data: Dict[str, Any], session: Session 
     disconnected_users = []
     
     for user_id, websocket in connections.items():
+        if target_user_id and user_id != target_user_id:
+            continue
         try:
             await websocket.send_text(json.dumps(notification))
             sent_count += 1
@@ -211,3 +214,7 @@ async def send_notification(notification_data: Dict[str, Any], session: Session 
         "total_connections": len(connections),
         "disconnected_users": len(disconnected_users)
     }
+
+@router.post("/notification")
+async def send_notification(notification_data: Dict[str, Any], session: Session = Depends(get_session)):
+    return await send_notification_service(notification_data, session)
