@@ -40,8 +40,8 @@ def on_startup():
     create_db_and_tables()
     if os.getenv("ENABLE_SCHEDULER", "false").lower() in {"1", "true", "yes"}:
         scheduler_service.start()
-        # Every minute, check for due reminders in IST
-        scheduler_service.add_cron_job(task_reminder_job, id="task_reminders", second="0")
+        # Every 10 minutes, check for due reminders in IST
+        scheduler_service.add_cron_job(task_reminder_job, id="task_reminders", minute="*/10", second="0")
 
 # Include all API routes
 app.include_router(user.router, prefix="/users", tags=["users"])
