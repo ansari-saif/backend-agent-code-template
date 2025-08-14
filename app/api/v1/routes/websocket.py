@@ -2,6 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, De
 import logging
 import json
 from typing import Dict, Any
+from datetime import datetime
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -146,7 +147,7 @@ async def get_websocket_status():
     }
 
 @router.post("/notification")
-async def send_notification(notification_data: Dict[str, Any]):
+async def send_notification(notification_data: Dict[str, Any], session: Session = Depends(get_session)):
     """
     Send a notification to all connected WebSocket users via HTTP endpoint.
     
@@ -161,8 +162,9 @@ async def send_notification(notification_data: Dict[str, Any]):
         raise HTTPException(status_code=404, detail="No active WebSocket connections")
     
     # Prepare notification message with only message key
+    notification_message = notification_data.get("message", "New notification")
     notification = {
-        "message": notification_data.get("message", "New notification")
+        "message": notification_message
     }
     
     # Send to all connected users
@@ -174,6 +176,24 @@ async def send_notification(notification_data: Dict[str, Any]):
             await websocket.send_text(json.dumps(notification))
             sent_count += 1
             logger.info(f"Notification sent to user {user_id}")
+            
+            # Store notification as prompt record for each user
+            try:
+                from app.models.prompt import Prompt
+                prompt = Prompt(
+                    user_id=user_id,
+                    prompt_text=f"System notification: {notification_message}",
+                    response_text=notification_message,
+                    completed_at=datetime.now()
+                )
+                session.add(prompt)
+                session.commit()
+                session.refresh(prompt)
+                logger.info(f"Stored notification as prompt record for user {user_id}")
+                
+            except Exception as e:
+                logger.error(f"Failed to store notification as prompt for user {user_id}: {str(e)}")
+                
         except Exception as e:
             logger.error(f"Failed to send notification to user {user_id}: {str(e)}")
             disconnected_users.append(user_id)
