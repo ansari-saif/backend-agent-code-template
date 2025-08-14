@@ -305,6 +305,7 @@ def create_bulk_tasks(
                 actual_duration=task_data.actual_duration,
                 energy_required=task_data.energy_required,
                 scheduled_for_date=task_data.scheduled_for_date,
+                scheduled_for_time=getattr(task_data, "scheduled_for_time", None),
             )
             session.add(db_task)
             created_tasks.append(db_task)

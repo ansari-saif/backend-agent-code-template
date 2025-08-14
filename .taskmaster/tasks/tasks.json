@@ -1,0 +1,33 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Schedule Service using APScheduler",
+        "description": "Install and configure APScheduler with FastAPI to handle background job scheduling.",
+        "details": "1. Add APScheduler to requirements.txt and install\n2. Create scheduler service and integrate with FastAPI startup/shutdown\n3. Configure scheduler with basic settings\n\n```python\n# requirements.txt\napscheduler\n\n# app/services/scheduler_service.py\nfrom apscheduler.schedulers.asyncio import AsyncIOScheduler\nfrom apscheduler.triggers.cron import CronTrigger\n\nclass SchedulerService:\n    def __init__(self):\n        self.scheduler = AsyncIOScheduler(timezone='UTC')\n        \n    def start(self):\n        if not self.scheduler.running:\n            self.scheduler.start()\n            \n    def shutdown(self):\n        if self.scheduler.running:\n            self.scheduler.shutdown()\n            \n    def add_cron_job(self, func, **cron_kwargs):\n        return self.scheduler.add_job(func, CronTrigger(**cron_kwargs))\n\n# app/main.py\nfrom app.services.scheduler_service import SchedulerService\n\nscheduler_service = SchedulerService()\n\n@app.on_event(\"startup\")\nasync def startup_event():\n    create_db_and_tables()\n    scheduler_service.start()\n    # Register jobs here (will be done in task 2)\n\n@app.on_event(\"shutdown\")\nasync def shutdown_event():\n    scheduler_service.shutdown()\n```",
+        "testStrategy": "1. Test scheduler starts and stops with FastAPI app\n2. Verify jobs can be added to the scheduler\n3. Test basic cron job functionality",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Schedule Cron Job for Task Reminders",
+        "description": "Create and schedule a cron job that runs every minute to check for upcoming tasks and send AI-enhanced notifications.",
+        "details": "1. Create task reminder function that checks for tasks due in next 30 minutes\n2. Generate AI reminder messages and send notifications\n3. Register the cron job to run every minute\n\n```python\n# app/services/task_reminder.py\nfrom datetime import datetime, timedelta\nfrom sqlmodel import Session, select\nfrom app.models.task import Task\nfrom app.core.database import get_session\nfrom app.services.ai_service import call_gemini_api\nimport httpx\n\nasync def check_upcoming_tasks():\n    \"\"\"Check for tasks due in next 30 minutes and send reminders\"\"\"\n    now = datetime.utcnow()\n    reminder_window = now + timedelta(minutes=30)\n    \n    with get_session() as session:\n        # Find tasks due in next 30 minutes (scheduled_time + duration)\n        query = select(Task).where(\n            (Task.scheduled_time + Task.duration) <= reminder_window,\n            (Task.scheduled_time + Task.duration) >= now,\n            Task.status.not_in(['completed', 'discarded'])\n        )\n        \n        upcoming_tasks = session.exec(query).all()\n        \n        for task in upcoming_tasks:\n            # Generate AI reminder\n            reminder_message = await generate_ai_reminder(task)\n            \n            # Send notification\n            await send_notification(task.user_id, task.title, reminder_message, task.id)\n\nasync def generate_ai_reminder(task) -> str:\n    \"\"\"Generate AI reminder message\"\"\"\n    try:\n        prompt = f\"\"\"Create a brief, motivating reminder for this task:\n        Title: {task.title}\n        Description: {task.description or 'No description'}\n        Due: {task.scheduled_time.strftime('%H:%M')}\n        Keep it concise and encouraging.\"\"\"\n        \n        response = await call_gemini_api(prompt)\n        return response.strip() if response else f\"Reminder: '{task.title}' is due soon!\"\n    except:\n        return f\"Reminder: '{task.title}' is due at {task.scheduled_time.strftime('%H:%M')}\"\n\nasync def send_notification(user_id: int, title: str, message: str, task_id: int):\n    \"\"\"Send notification using the /notification route\"\"\"\n    try:\n        payload = {\n            \"user_id\": user_id,\n            \"title\": f\"Upcoming Task: {title}\",\n            \"message\": message,\n            \"data\": {\"task_id\": task_id}\n        }\n        \n        async with httpx.AsyncClient() as client:\n            await client.post(\n                \"http://localhost:8000/api/v1/notification\",\n                json=payload,\n                timeout=5.0\n            )\n    except Exception as e:\n        print(f\"Failed to send notification: {e}\")\n\n# app/main.py (add to startup_event)\nfrom app.services.task_reminder import check_upcoming_tasks\n\n@app.on_event(\"startup\")\nasync def startup_event():\n    create_db_and_tables()\n    scheduler_service.start()\n    \n    # Schedule task reminder to run every minute\n    scheduler_service.add_cron_job(\n        func=check_upcoming_tasks,\n        minute='*',  # Every minute\n        id='task_reminder_job',\n        replace_existing=True\n    )\n```",
+        "testStrategy": "1. Test task query logic with various time scenarios\n2. Mock AI service calls and verify fallback messages\n3. Test notification sending with mock HTTP client\n4. Verify cron job runs at correct intervals\n5. End-to-end test with actual tasks and notifications",
+        "priority": "high",
+        "dependencies": [1],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-14T11:45:00.000Z",
+      "updated": "2025-08-14T11:45:00.000Z",
+      "description": "Simplified scheduler implementation - just 2 focused tasks"
+    }
+  }
+}

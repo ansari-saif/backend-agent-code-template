@@ -18,6 +18,8 @@ def create_task(session: Session, data: TaskCreate) -> Task:
         estimated_duration=data.estimated_duration,
         actual_duration=data.actual_duration,
         energy_required=data.energy_required,
+        scheduled_for_date=data.scheduled_for_date,
+        scheduled_for_time=getattr(data, "scheduled_for_time", None),
     )
     session.add(task)
     session.commit()

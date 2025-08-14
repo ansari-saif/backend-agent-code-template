@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime, date, time
 from enum import Enum
 from pydantic import model_validator
 
@@ -34,6 +34,7 @@ class TaskBase(BaseModel):
     actual_duration: Optional[int] = Field(default=None, ge=0)     # minutes
     energy_required: EnergyRequiredEnum = EnergyRequiredEnum.MEDIUM
     scheduled_for_date: Optional[date] = None
+    scheduled_for_time: Optional[time] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -72,6 +73,7 @@ class TaskUpdate(BaseModel):
     actual_duration: Optional[int] = Field(default=None, ge=0)
     energy_required: Optional[EnergyRequiredEnum] = None
     scheduled_for_date: Optional[date] = None
+    scheduled_for_time: Optional[time] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
@@ -102,6 +104,7 @@ class TaskUpdate2(BaseModel):
     actual_duration: Optional[int] = Field(default=None, ge=0)
     energy_required: Optional[EnergyRequiredEnum] = None
     scheduled_for_date: Optional[date] = None
+    scheduled_for_time: Optional[time] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     started_at: Optional[datetime] = None

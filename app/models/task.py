@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from datetime import datetime, date
+from datetime import datetime, date, time
 from sqlalchemy import Column, String, Enum
 from app.schemas.task import TaskPriorityEnum, CompletionStatusEnum, EnergyRequiredEnum
 from app.models import TimestampModel
@@ -33,6 +33,7 @@ class Task(TimestampModel, table=True):
         sa_column=Column(Enum(EnergyRequiredEnum, name='energyrequiredenum', create_type=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     )
     scheduled_for_date: Optional[date] = Field(default=None)
+    scheduled_for_time: Optional[time] = Field(default=None)
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     discard_message: Optional[str] = None
