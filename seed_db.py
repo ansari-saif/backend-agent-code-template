@@ -118,163 +118,725 @@ def seed_database():
         session.add(job_metrics)
         session.commit()
 
-        # Create main yearly goal
-        main_goal = Goal(
-            user_id=user.telegram_id,
-            type=GoalTypeEnum.YEARLY,
-            description="Build a successful startup within a year",
-            deadline=date(2025, 5, 1),
-            status=StatusEnum.ACTIVE,
-            phase=PhaseEnum.RESEARCH,
-            priority=PriorityEnum.HIGH,
-            completion_percentage=15.0
-        )
-        session.add(main_goal)
+        # Create yearly goals (user-defined)
+        yearly_goals = [
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Improve overall health and fitness — both mind and body.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Complete Sirat-un-Nabi and strive to become a better person for a more fulfilling life.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Launch my own startup to reduce dependency and gain independence.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Improve my handwriting to confidently pass my B.Tech exams.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Complete all pending ALT work.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Become a stronger, more valuable employee at ALT.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.YEARLY,
+                description="Continue self-improvement through books, good habits, mindfulness, spirituality, new skills, and other personal growth activities.",
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+			Goal(
+				user_id=user.telegram_id,
+				type=GoalTypeEnum.YEARLY,
+				description="Improve communication skills — clear, confident, and empathetic.",
+				status=StatusEnum.ACTIVE,
+				phase=PhaseEnum.RESEARCH,
+				priority=PriorityEnum.MEDIUM,
+			),
+        ]
+        for g in yearly_goals:
+            session.add(g)
 
-        # Create quarterly goals
+        # Explicit quarter plan for 2025
+        today = date.today()
+        q1_deadline = date(2025, 3, 31)
+        q2_deadline = date(2025, 6, 30)
+        q3_deadline = date(2025, 9, 30)
+        q4_deadline = date(2025, 12, 31)
+
+        # Q1 Focus: Startup – Validation Phase (kept for existing task references)
         q1_goal = Goal(
             user_id=user.telegram_id,
             type=GoalTypeEnum.QUARTERLY,
-            description="Complete market research and validate business idea",
-            deadline=date(2024, 8, 1),
+            description="Startup – Validation Phase: 20 interviews, 3 solution experiments. No MVP building yet — only problem validation + landing page.",
+            deadline=q1_deadline,
             status=StatusEnum.ACTIVE,
             phase=PhaseEnum.RESEARCH,
             priority=PriorityEnum.HIGH,
-            completion_percentage=60.0
+            completion_percentage=0.0
         )
         session.add(q1_goal)
 
+        # Q2 Focus: Startup – MVP Phase (kept for existing task references)
         q2_goal = Goal(
             user_id=user.telegram_id,
             type=GoalTypeEnum.QUARTERLY,
-            description="Develop MVP and get initial user feedback",
-            deadline=date(2024, 11, 1),
+            description="Startup – MVP Phase: Build MVP slice, onboard first 5–10 users.",
+            deadline=q2_deadline,
             status=StatusEnum.ACTIVE,
             phase=PhaseEnum.MVP,
             priority=PriorityEnum.HIGH,
-            completion_percentage=25.0
+            completion_percentage=0.0
         )
         session.add(q2_goal)
 
-        # Create monthly goals
-        monthly_goal = Goal(
-            user_id=user.telegram_id,
-            type=GoalTypeEnum.MONTHLY,
-            description="Complete competitor analysis and define unique value proposition",
-            deadline=date(2024, 7, 31),
-            status=StatusEnum.ACTIVE,
-            phase=PhaseEnum.RESEARCH,
-            priority=PriorityEnum.MEDIUM,
-            completion_percentage=80.0
-        )
-        session.add(monthly_goal)
+        # Additional quarterly goals aligned with the 2025 plan
+        quarterly_goals = [
+            # Q1 Focus
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Health & Fitness: 5 workouts/week, daily mindfulness. Target: +10% stamina/endurance by end of Q1.",
+                deadline=q1_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="ALT Backlog: Clear 100% of pending work. Weekly progress reporting.",
+                deadline=q1_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.HIGH,
+            ),
+            # Q1 Maintenance
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Sirat-un-Nabi: 2 chapters/week (keep habit alive).",
+                deadline=q1_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Handwriting: 20 mins twice a week.",
+                deadline=q1_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Self-improvement: 1 book this quarter.",
+                deadline=q1_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Communication: 1 speaking drill/week.",
+                deadline=q1_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            # Q2 Focus
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Communication Skills: Intensive — 3 drills/week, 1 recording/week, 2 writing exercises/week.",
+                deadline=q2_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="ALT Performance: Exceed 2 KPIs, deliver 1 process improvement.",
+                deadline=q2_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            # Q2 Maintenance
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Health & Fitness: 3 workouts/week.",
+                deadline=q2_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Sirat-un-Nabi: 1 chapter/week.",
+                deadline=q2_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Handwriting: 20 mins weekly.",
+                deadline=q2_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Self-improvement: casual reading, no new habits.",
+                deadline=q2_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.LOW,
+            ),
+            # Q3 Focus
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Sirat-un-Nabi – 50% completion: deep reading with reflection notes.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Self-Improvement: 2 new habits (track streaks), finish 2 books.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Health & Fitness: increase difficulty, add strength training.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            # Q3 Maintenance
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Startup: 2–3 customer interviews/month for feedback.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="ALT Backlog: keep <10% pending.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Communication: 1 drill/week.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.LOW,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Handwriting: 20 mins/week.",
+                deadline=q3_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.LOW,
+            ),
+            # Q4 Focus
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Startup – Revenue Phase: monetize MVP, aim for first paying customers.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.GROWTH,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Handwriting: daily 20 mins for B.Tech prep; 2 mock exams/month.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="ALT Performance: year-end KPI push; one major process improvement.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            # Q4 Maintenance
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Health & Fitness: 3 workouts/week.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Sirat-un-Nabi: 1 chapter/week.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Self-improvement: 1 book.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.LOW,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.QUARTERLY,
+                description="Communication: 1 recording/month.",
+                deadline=q4_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.LOW,
+            ),
+        ]
+        for g in quarterly_goals:
+            session.add(g)
 
-        # Create weekly goals
-        weekly_goal = Goal(
-            user_id=user.telegram_id,
-            type=GoalTypeEnum.WEEKLY,
-            description="Interview 5 potential customers and document insights",
-            deadline=date(2024, 7, 7),
-            status=StatusEnum.ACTIVE,
-            phase=PhaseEnum.RESEARCH,
-            priority=PriorityEnum.HIGH,
-            completion_percentage=40.0
-        )
-        session.add(weekly_goal)
+        # Compute month and week deadlines
+        first_of_next_month = date(today.year + (1 if today.month == 12 else 0),
+                                   1 if today.month == 12 else today.month + 1,
+                                   1)
+        month_deadline = first_of_next_month - timedelta(days=1)
+        days_to_sunday = 6 - today.weekday()
+        week_deadline = today + timedelta(days=days_to_sunday)
+
+        # Create monthly goals aligned with yearly goals
+        monthly_goals = [
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Health: complete 20 workouts and 25 mindfulness sessions.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Sirat-un-Nabi: read 8 chapters with notes and monthly reflections.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Startup: ship MVP slice and collect 10 user signups/feedback.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.MVP,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Handwriting: daily 20 minutes; complete 10 practice sheets.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="ALT backlog: clear 100% of pending work and report weekly.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="ALT performance: exceed 2 KPIs and deliver 1 process improvement.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Self-improvement: finish 1 book and maintain 2 habits (21+ day streak).",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.MONTHLY,
+                description="Communication: 30 daily speaking drills, 4 recordings with feedback, and 8 writing exercises.",
+                deadline=month_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+        ]
+        for g in monthly_goals:
+            session.add(g)
+        # Keep a reference for tasks below (startup-related monthly goal)
+        monthly_goal = monthly_goals[2]
+        # Reference for communication monthly goal
+        communication_monthly_goal = monthly_goals[7]
+
+        # Create weekly goals aligned with yearly goals
+        weekly_goals = [
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Health: 5 workouts and 7 mindfulness sessions this week.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Sirat-un-Nabi: read 2 chapters and write reflections.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Startup: conduct 5 interviews and validate 1 key hypothesis.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Handwriting: 20 minutes daily; complete 2 mock answer sheets.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="ALT backlog: clear at least 30% this week and update status.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.HIGH,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="ALT performance: exceed 1 KPI and propose 1 improvement.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Self-improvement: read 3 chapters and maintain 2 habits daily.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+            Goal(
+                user_id=user.telegram_id,
+                type=GoalTypeEnum.WEEKLY,
+                description="Communication: daily 10m speaking drills, 1 recording with feedback, and 2 writing exercises.",
+                deadline=week_deadline,
+                status=StatusEnum.ACTIVE,
+                phase=PhaseEnum.RESEARCH,
+                priority=PriorityEnum.MEDIUM,
+            ),
+        ]
+        for g in weekly_goals:
+            session.add(g)
+        # Keep a reference for tasks below (startup-related weekly goal)
+        weekly_goal = weekly_goals[2]
 
         session.commit()
 
-        # Create tasks
+        # Helpful references for tasks linked to monthly focus areas
+        health_monthly_goal = monthly_goals[0]
+        sirat_monthly_goal = monthly_goals[1]
+        startup_monthly_goal = monthly_goal
+        handwriting_monthly_goal = monthly_goals[3]
+        alt_backlog_monthly_goal = monthly_goals[4]
+        alt_perf_monthly_goal = monthly_goals[5]
+        self_improve_monthly_goal = monthly_goals[6]
+        communication_monthly_goal = monthly_goals[7]
+
+        # Create tasks aligned with current goals
         tasks = [
+            # Startup / Entrepreneurship
             Task(
                 user_id=user.telegram_id,
                 goal_id=q1_goal.goal_id,
-                description="Research top 10 competitors in the target market",
-                priority=TaskPriorityEnum.HIGH,
-                completion_status=CompletionStatusEnum.COMPLETED,
-                estimated_duration=120,
-                actual_duration=90,
-                energy_required=EnergyRequiredEnum.MEDIUM,
-                scheduled_for_date=date(2024, 7, 1),
-                started_at=datetime(2024, 7, 1, 9, 0),
-                completed_at=datetime(2024, 7, 1, 10, 30),
-                ai_generated=False
-            ),
-            Task(
-                user_id=user.telegram_id,
-                goal_id=q1_goal.goal_id,
-                description="Create customer interview questions and schedule calls",
+                description="Draft interview script and schedule 5 customer interviews",
                 priority=TaskPriorityEnum.HIGH,
                 completion_status=CompletionStatusEnum.IN_PROGRESS,
-                estimated_duration=60,
+                estimated_duration=90,
                 actual_duration=45,
-                energy_required=EnergyRequiredEnum.LOW,
-                scheduled_for_date=date(2024, 7, 2),
-                started_at=datetime(2024, 7, 2, 14, 0),
-                ai_generated=True
-            ),
-            Task(
-                user_id=user.telegram_id,
-                goal_id=q2_goal.goal_id,
-                description="Design initial wireframes for MVP",
-                priority=TaskPriorityEnum.MEDIUM,
-                completion_status=CompletionStatusEnum.PENDING,
-                estimated_duration=180,
-                energy_required=EnergyRequiredEnum.HIGH,
-                scheduled_for_date=date(2024, 7, 5),
+                energy_required=EnergyRequiredEnum.MEDIUM,
+                scheduled_for_date=today,
+                started_at=datetime(today.year, today.month, today.day, 11, 0),
                 ai_generated=True
             ),
             Task(
                 user_id=user.telegram_id,
                 goal_id=weekly_goal.goal_id,
-                description="Conduct customer interview with John from TechCorp",
+                description="Conduct 2 customer interviews and synthesize notes",
                 priority=TaskPriorityEnum.URGENT,
                 completion_status=CompletionStatusEnum.PENDING,
-                estimated_duration=30,
+                estimated_duration=120,
                 energy_required=EnergyRequiredEnum.MEDIUM,
-                scheduled_for_date=date(2024, 7, 3),
+                scheduled_for_date=today + timedelta(days=1),
                 ai_generated=False
             ),
             Task(
                 user_id=user.telegram_id,
-                goal_id=monthly_goal.goal_id,
-                description="Write competitive analysis report",
+                goal_id=q2_goal.goal_id,
+                description="Implement MVP slice: auth + basic dashboard",
                 priority=TaskPriorityEnum.MEDIUM,
-                completion_status=CompletionStatusEnum.IN_PROGRESS,
+                completion_status=CompletionStatusEnum.PENDING,
                 estimated_duration=240,
-                actual_duration=120,
                 energy_required=EnergyRequiredEnum.HIGH,
-                scheduled_for_date=date(2024, 7, 4),
-                started_at=datetime(2024, 7, 4, 8, 0),
+                scheduled_for_date=today + timedelta(days=3),
+                ai_generated=True
+            ),
+            Task(
+                user_id=user.telegram_id,
+                goal_id=startup_monthly_goal.goal_id,
+                description="Launch landing page and collect first 10 signups",
+                priority=TaskPriorityEnum.HIGH,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=180,
+                energy_required=EnergyRequiredEnum.MEDIUM,
+                scheduled_for_date=today + timedelta(days=5),
                 ai_generated=False
-            )
+            ),
+
+            # Health & Fitness
+            Task(
+                user_id=user.telegram_id,
+                goal_id=health_monthly_goal.goal_id,
+                description="Workout: 45-minute full-body session",
+                priority=TaskPriorityEnum.MEDIUM,
+                completion_status=CompletionStatusEnum.COMPLETED,
+                estimated_duration=60,
+                actual_duration=45,
+                energy_required=EnergyRequiredEnum.HIGH,
+                scheduled_for_date=today,
+                started_at=datetime(today.year, today.month, today.day, 7, 0),
+                completed_at=datetime(today.year, today.month, today.day, 7, 45),
+                ai_generated=False
+            ),
+            Task(
+                user_id=user.telegram_id,
+                goal_id=health_monthly_goal.goal_id,
+                description="Mindfulness: 10-minute breathing session",
+                priority=TaskPriorityEnum.LOW,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=15,
+                energy_required=EnergyRequiredEnum.LOW,
+                scheduled_for_date=today,
+                ai_generated=False
+            ),
+
+            # Sirat-un-Nabi
+            Task(
+                user_id=user.telegram_id,
+                goal_id=sirat_monthly_goal.goal_id,
+                description="Read 2 chapters of Sirat-un-Nabi and write reflections",
+                priority=TaskPriorityEnum.MEDIUM,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=90,
+                energy_required=EnergyRequiredEnum.LOW,
+                scheduled_for_date=today + timedelta(days=2),
+                ai_generated=False
+            ),
+
+            # Handwriting
+            Task(
+                user_id=user.telegram_id,
+                goal_id=handwriting_monthly_goal.goal_id,
+                description="Handwriting practice: 20 minutes + 1 mock answer sheet",
+                priority=TaskPriorityEnum.MEDIUM,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=40,
+                energy_required=EnergyRequiredEnum.MEDIUM,
+                scheduled_for_date=today + timedelta(days=1),
+                ai_generated=False
+            ),
+
+            # ALT work & performance
+            Task(
+                user_id=user.telegram_id,
+                goal_id=alt_backlog_monthly_goal.goal_id,
+                description="ALT: clear 5 backlog items and update tracker",
+                priority=TaskPriorityEnum.URGENT,
+                completion_status=CompletionStatusEnum.IN_PROGRESS,
+                estimated_duration=180,
+                actual_duration=60,
+                energy_required=EnergyRequiredEnum.MEDIUM,
+                scheduled_for_date=today,
+                started_at=datetime(today.year, today.month, today.day, 15, 0),
+                ai_generated=False
+            ),
+            Task(
+                user_id=user.telegram_id,
+                goal_id=alt_perf_monthly_goal.goal_id,
+                description="ALT: propose 1 process improvement and draft plan",
+                priority=TaskPriorityEnum.MEDIUM,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=90,
+                energy_required=EnergyRequiredEnum.LOW,
+                scheduled_for_date=today + timedelta(days=2),
+                ai_generated=False
+            ),
+
+            # Self improvement
+            Task(
+                user_id=user.telegram_id,
+                goal_id=self_improve_monthly_goal.goal_id,
+                description="Read 3 chapters of a self-improvement book and summarize notes",
+                priority=TaskPriorityEnum.LOW,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=120,
+                energy_required=EnergyRequiredEnum.LOW,
+                scheduled_for_date=today + timedelta(days=3),
+                ai_generated=False
+            ),
+            # Communication
+            Task(
+                user_id=user.telegram_id,
+                goal_id=communication_monthly_goal.goal_id,
+                description="Communication practice: record a 3-minute talk and self-review",
+                priority=TaskPriorityEnum.MEDIUM,
+                completion_status=CompletionStatusEnum.PENDING,
+                estimated_duration=30,
+                energy_required=EnergyRequiredEnum.LOW,
+                scheduled_for_date=today + timedelta(days=1),
+                ai_generated=False
+            ),
         ]
         
         for task in tasks:
             session.add(task)
         session.commit()
 
-        # Create progress logs for the last 7 days
+        # Create progress logs for the last 7 days (aligned with goals)
         progress_logs = []
         for i in range(7):
             log_date = date.today() - timedelta(days=i)
             progress_logs.append(ProgressLog(
                 user_id=user.telegram_id,
                 date=log_date,
-                tasks_completed=3 + (i % 3),  # Varying completion
+                tasks_completed=2 + (i % 3),
                 tasks_planned=5,
-                mood_score=6 + (i % 3),  # Varying mood
-                energy_level=7 + (i % 2),  # Varying energy
-                focus_score=6 + (i % 3),  # Varying focus
-                daily_reflection=f"Day {i+1}: Made good progress on market research. Need to improve time management.",
-                ai_insights=f"AI Insight Day {i+1}: Your productivity peaks between 9-11 AM. Consider scheduling high-energy tasks during this window."
+                mood_score=6 + (i % 2),
+                energy_level=6 + (i % 3),
+                focus_score=6 + (i % 2),
+                daily_reflection=(
+                    f"Day {i+1}: Completed workout and mindfulness. "
+                    f"Read Sirat-un-Nabi and progressed startup interviews. Practiced handwriting."
+                ),
+                ai_insights=(
+                    f"AI Insight Day {i+1}: Morning deep work worked well. "
+                    f"Keep workouts at 7 AM and schedule interviews between 11 AM - 1 PM for best energy."
+                )
             ))
-        
+
         for log in progress_logs:
             session.add(log)
         session.commit()
 
-        # Create day logs for the last 3 days
+        # Create day logs for the last 3 days (aligned with goals)
         day_logs = []
         for i in range(3):
             log_date = date.today() - timedelta(days=i)
@@ -283,12 +845,12 @@ def seed_database():
                 date=log_date,
                 start_time=datetime.combine(log_date, time(8, 0)),
                 end_time=datetime.combine(log_date, time(17, 0)),
-                summary=f"Productive day focused on market research and customer interviews. Completed {3 + i} major tasks.",
-                highlights=f"Had breakthrough conversation with potential customer. Validated key assumption about market need.",
-                challenges="Struggled with time management in the afternoon. Need to improve focus during low-energy periods.",
-                learnings="Customer interviews are more valuable than desk research. Direct feedback provides clearer insights.",
-                gratitude="Grateful for supportive network and access to potential customers. Appreciate the learning opportunity.",
-                tomorrow_plan="Schedule 2 more customer interviews. Start working on competitive analysis report. Review weekly goals.",
+                summary=f"Balanced day: workout + mindfulness, startup interviews, and handwriting practice. Completed {3 + i} tasks.",
+                highlights=f"Great interview insights and strong workout routine maintained.",
+                challenges="Energy dip post-lunch; handwriting practice felt slow.",
+                learnings="Short mindful breaks boost focus; interviewing yields better startup direction.",
+                gratitude="Health, learning opportunities, and supportive colleagues at ALT.",
+                tomorrow_plan="Finish interview scheduling, ship MVP slice, and complete 20-min handwriting practice.",
                 weather="Sunny",
                 location="Home office"
             ))
@@ -297,14 +859,14 @@ def seed_database():
             session.add(log)
         session.commit()
 
-        # Create AI context
+        # Create AI context aligned with current goals
         ai_context = AIContext(
             user_id=user.telegram_id,
-            behavior_patterns='{"productivity_peaks": ["9:00-11:00", "14:00-16:00"], "energy_dips": ["13:00-14:00", "16:00-17:00"], "preferred_task_types": ["research", "planning"], "avoided_task_types": ["repetitive", "administrative"]}',
-            productivity_insights="You perform best during morning hours (9-11 AM) and early afternoon (2-4 PM). Consider scheduling high-energy tasks during these windows and low-energy tasks during your energy dips.",
-            motivation_triggers="Progress tracking, customer feedback, and learning new skills significantly boost your motivation. Set up regular check-ins and celebrate small wins.",
-            stress_indicators="When you feel overwhelmed, you tend to procrastinate on administrative tasks. Your stress levels increase when you don't see clear progress toward your goals.",
-            optimal_work_times="Morning (9-11 AM) for deep work and strategic thinking. Early afternoon (2-4 PM) for creative tasks and customer interactions. Avoid complex tasks during 1-2 PM and 4-5 PM.",
+            behavior_patterns='{"productivity_peaks": ["7:00-9:00", "10:00-12:00"], "energy_dips": ["13:00-14:00"], "health_routine": {"workouts_per_week": 5, "mindfulness_daily": true}, "learning_focus": ["Sirat-un-Nabi", "self-improvement books"], "skill_habits": ["handwriting 20m daily"], "work_focus": {"ALT": ["clear backlog", "exceed KPIs"], "startup": ["interviews", "MVP slices"]}}',
+            productivity_insights="Best flow: workout 7-8 AM, deep work 10 AM–12 PM for interviews/MVP, admin 3-5 PM. Handwriting practice is easiest in the evening.",
+            motivation_triggers="Visible progress (signup count, interview count), habit streaks, spiritual reading, and positive feedback at ALT.",
+            stress_indicators="Backlog growing at ALT, missed workouts >2 days, unclear MVP scope, or delayed interview responses increase stress.",
+            optimal_work_times="Workout 7-8 AM; Deep work 10-12; Meetings/interviews 11-13; Admin 15-17; Avoid complex work 13-14.",
             last_updated=datetime.now()  # IST
         )
         session.add(ai_context)
