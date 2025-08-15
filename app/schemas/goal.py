@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 from enum import Enum
 
@@ -33,6 +33,7 @@ class PriorityEnum(str, Enum):
 
 class GoalBase(BaseModel):
     user_id: str
+    parent_goal_id: Optional[int] = None
     type: GoalTypeEnum
     description: str
     deadline: Optional[date] = None
@@ -53,7 +54,16 @@ class GoalResponse(GoalBase):
         from_attributes = True
 
 
+class GoalHierarchyResponse(GoalResponse):
+    child_goals: List["GoalResponse"] = []
+    parent_goal: Optional["GoalResponse"] = None
+
+    class Config:
+        from_attributes = True
+
+
 class GoalUpdate(BaseModel):
+    parent_goal_id: Optional[int] = None
     type: Optional[GoalTypeEnum] = None
     description: Optional[str] = None
     deadline: Optional[date] = None

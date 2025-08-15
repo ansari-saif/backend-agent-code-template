@@ -14,6 +14,7 @@ class Goal(TimestampModel, table=True):
     
     goal_id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(foreign_key="users.telegram_id")
+    parent_goal_id: Optional[int] = Field(default=None, foreign_key="goals.goal_id")
     type: GoalTypeEnum = GoalTypeEnum.MONTHLY
     description: str
     deadline: Optional[date] = None
@@ -25,3 +26,8 @@ class Goal(TimestampModel, table=True):
     # Relationships
     user: Optional["User"] = Relationship(back_populates="goals")
     tasks: List["Task"] = Relationship(back_populates="goal")
+    parent_goal: Optional["Goal"] = Relationship(
+        back_populates="child_goals",
+        sa_relationship_kwargs={"remote_side": "Goal.goal_id"}
+    )
+    child_goals: List["Goal"] = Relationship(back_populates="parent_goal")
