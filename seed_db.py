@@ -49,20 +49,20 @@ HIERARCHICAL_GOALS = {
     "startup": {
         "quarterly": [
             {
-                "description": "Complete MVP and 1 interview",
+                "description": "Monthly : Complete MVP and 1 interview",
                 "deadline": date(2025, 9, 30),
                 "priority": "HIGH",
                 "phase": "RESEARCH",
                 "monthly": [
                     {
-                        "description": "Complete MVP and 1 interview",
+                        "description": "Weekly : Complete MVP and 1 interview",
                         "deadline": date(2025, 8, 31),
                         "priority": "HIGH",
                         "phase": "RESEARCH",
                         "completion": 0,
                         "weekly": [
                             {
-                                "description": "Complete MVP and refine product",
+                                "description": "Weekly : Complete MVP and refine product",
                                 "deadline": date(2025, 8, 17),
                                 "priority": "HIGH",
                                 "completion": 0,
@@ -78,46 +78,7 @@ HIERARCHICAL_GOALS = {
                 ]
             }
         ]
-    },
-    "health": {
-        "quarterly": [
-            {
-                "description": "Health & Fitness: 5 workouts/week",
-                "deadline": date(2025, 9, 30),
-                "priority": "MEDIUM",
-                "phase": "RESEARCH",
-                "monthly": [
-                    {
-                        "description": "Establish workout routine and track progress",
-                        "deadline": date(2025, 8, 31),
-                        "priority": "MEDIUM",
-                        "phase": "RESEARCH",
-                        "completion": 0,
-                        "weekly": [
-                            {
-                                "description": "Complete 3 workouts and track measurements",
-                                "deadline": date(2025, 8, 17),
-                                "priority": "MEDIUM",
-                                "completion": 0,
-                            },
-                            {
-                                "description": "Complete 4 workouts and plan next week's routine",
-                                "deadline": date(2025, 8, 24),
-                                "priority": "MEDIUM",
-                                "completion": 0,
-                            },
-                            {
-                                "description": "Achieve 5 workouts and review monthly progress",
-                                "deadline": date(2025, 8, 31),
-                                "priority": "MEDIUM",
-                                "completion": 0,
-                            },
-                        ]
-                    }
-                ]
-            }
-        ]
-    },
+    }
 }
 
 def create_db_and_tables():
